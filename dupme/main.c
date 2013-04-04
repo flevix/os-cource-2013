@@ -21,22 +21,22 @@ int str2int(char *source)
     return result;
 }
 
-char *data;
+char *data, *out;
 
 int print(int length)
 {
-    
+    memcpy(out, data, length + 1);
+    memcpy(out + length + 1, data, length + 1);
     int write_count = 0;
     while (length > 0)
     {
-        write_count = write(1, data + write_count, length);
+        write_count = write(1, out + write_count, 2 * (length + 1));
         if (write_count < 0) {
             write(2, "<Writing error>\n", 17);
             exit(1);
         }
         length -= write_count;
     }
-    write(1, "\n", 1);
 }
 
 void exit_error()
@@ -57,13 +57,13 @@ int main(int argc, char** argv)
     }
     int k = str2int(argv[1]);
     data = malloc(++k * sizeof(char));
+    out = malloc(k * 2 * sizeof(char));
 
     last_case = NORMAL;
     int length = 0;
     int read_count = 0;
     int end_of_file = 0;
     int i = 0;
-    int start = 0, end = 0, count = 0;
     while (1)
     {
         while (length != k && !end_of_file)
@@ -78,27 +78,28 @@ int main(int argc, char** argv)
         for (i = 0; i < length; i++)
             if (data[i] == '\n') {
                 if (last_case == IGNORING) {
-                    memmove(data, data + i + 1, k - i);
+                    memmove(data, data + i + 1, k - i - 1);
                     last_case = NORMAL;
-                    length -= i;
+                    length -= i + 1;
                     i = 0;
                 } else if (last_case == NORMAL) {
                     if (i < k) {
                         print(i);
                     }
-                    memmove(data, data + i + 1, k - i);
-                    length -= i;
+                    memmove(data, data + i + 1, k - i - 1);
+                    length -= i + 1;
                     i = 0;
                 }
             }
         if (end_of_file) {
-            print(i);
+            data[length] = '\n';
+            print(length);
             break;
         }
-        if (length = k)
+        if (length == k) {
             last_case = IGNORING;
-        else
-            memmove(data, data + (k - length), length);
+            length = 0;
+        }
     }
     //write(1, "Good!\n", 7);
     free(data);
