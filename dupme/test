@@ -1,0 +1,5 @@
+#!/bin/bash
+echo -ne "first test\n"
+{ echo -ne "123\n321" ; sleep 2 ; echo -ne '\n1234\n123' ;} | ./main 3
+echo -ne "second test\n"
+{ echo -ne "123\n321" ; sleep 2 ; echo -ne '\n1234\n1234' ;} | ./main 3
