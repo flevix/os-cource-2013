@@ -3,3 +3,9 @@ echo -ne "first test\n"
 { echo -ne "123\n321" ; sleep 2 ; echo -ne '\n1234\n123' ;} | ./main 3
 echo -ne "second test\n"
 { echo -ne "123\n321" ; sleep 2 ; echo -ne '\n1234\n1234' ;} | ./main 3
+echo -ne "third test\n"
+{ echo -n "123\n321" ; sleep 2 ; echo -ne '\n1234\n123' ;} | ./main 3
+echo -ne "test 4\n"
+{ echo -ne '' ;} | ./main 1
+echo -ne "test 5\n"
+{ echo -ne '\n' ;} | ./main 3

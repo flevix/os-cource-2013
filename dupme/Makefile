@@ -1,4 +1,4 @@
 all: main.c
-	gcc main.c -o main
+	gcc -fno-builtin-memmove main.c -o main
 clean:
 	rm -rf *.o main
