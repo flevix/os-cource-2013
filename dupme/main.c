@@ -4,7 +4,7 @@
 int str2int(char *source) { 
     int result = 0;
     while (*source != 0) {
-        if ((result > (2147483647 - 9) / 10) || *source < '1' || *source > '9') exit(1);
+        if ((result > (2147483647 - 9) / 10) || *source < '0' || *source > '9') exit(1);
         result = 10 * result + (*source - '0');
         source++;
     }
