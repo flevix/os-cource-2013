@@ -77,8 +77,10 @@ int main(int argc, char** argv)
         }
         if (end_of_file == 1)
         {
-            if (last_case == NORMAL)
+            //write(1, "<EOF>", 5);
+            if (last_case != IGNORING)
             {
+                //write(1, "<EOF_N>", 7);
                 print(i);
                 print(i);
             }
