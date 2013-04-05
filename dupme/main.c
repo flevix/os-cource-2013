@@ -13,7 +13,7 @@ int str2int(char *source) {
 
 char *data;
 
-int print(int length) {
+void print(int length) {
     int write_count = 0;
     while (length > 0) {
         write_count = write(1, data + write_count, length + 1);
@@ -39,17 +39,18 @@ int main(int argc, char** argv) {
         for (i = 0; i < length; i++)
             if (data[i] == '\n') {
                 if (last_case == IGNORING) last_case = NORMAL;
-                if (last_case == NORMAL && i < k && data[0] != '\n') { print(i); print(i); }
+                else if (last_case == NORMAL && i < k && data[0] != '\n') { print(i); print(i); }
                 memmove(data, data + i + 1, k - i - 1);
                 length -= i + 1;
                 i = 0;
             }
-        if (end_of_file && data[0] != '\n') {
-            data[length] = '\n';
-            print(length); print(length);
-        } else if (length == k) {
+        if (length == k) {
             last_case = IGNORING;
             length = 0;
+        }
+        if (end_of_file && last_case != IGNORING && data[0] != '\n') {
+            data[length] = '\n';
+            print(length); print(length);
         }
     }
     free(data);
