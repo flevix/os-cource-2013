@@ -1,3 +1,24 @@
 #!/bin/bash
 #renaimer
-echo "renainer created!"
+
+ZERO=0
+E_NO_ARGUMENTS=2
+
+if [ "$#" -eq "$ZERO" ]
+then
+    echo -e "Usage: renaimer [filename/s]\n"
+    exit $E_NO_ARGUMENTS
+fi
+
+number=0
+
+for filename in "$@"
+do
+    dirname=`dirname "$filename"`
+    basename=`basename "$filename"`
+    echo "old name: " "$basename" "; new name: " && read newbasename
+    if [ "$newbasename" ]
+    then
+        mv "$dirname/$basename" "$dirname/$newbasename"
+    fi
+done
