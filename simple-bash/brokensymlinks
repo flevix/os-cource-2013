@@ -10,11 +10,11 @@ then
 fi
 
 checkLink () {
-    for arg in $1/*
+    for arg in "$@"
     do
         if [ -d "$arg" ]
         then
-            checkLink "$arg"
+            checkLink "$arg"/*
         else
             if [ -h "$arg" -a ! -e "$arg" ]
             then
@@ -26,13 +26,5 @@ checkLink () {
 
 for arg in "$@"
 do
-    if [ -d "$arg" ]
-    then
-        checkLink "$arg"
-    else 
-        if [ -h "$arg" -a ! -e "$arg" ]
-        then
-            echo "$arg"
-        fi
-    fi
+    checkLink "$arg"
 done
