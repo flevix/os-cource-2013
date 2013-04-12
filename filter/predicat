@@ -1,0 +1,8 @@
+#!/bin/bash
+SIZE=`stat -c %s "$1"`
+(( MSIZE = (SIZE)/1024/1024 ))
+if [ $MSIZE -gt 2 ]
+then
+    exit 0
+fi
+exit 1
