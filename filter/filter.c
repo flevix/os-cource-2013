@@ -51,7 +51,7 @@ int start(int i)
 }
 
 enum state {
-    NORMAL
+    NORMAL, IGNORING
 } last_case;
 
 int main(int argc, char** argv) {
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
         {
             exit(1);
         }
-        if (end_of_file && last_case != IGNORING && data[0] != delimiter) {
+        if (end_of_file && data[0] != delimiter) {
             data[length] = delimiter;
             start(length);
         }
