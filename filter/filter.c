@@ -6,7 +6,7 @@
 #include <fcntl.h>
 
 char *data;
-char **com;
+char **_argv;
 
 void print(int length) {
     int write_count = 0;
@@ -20,11 +20,11 @@ void print(int length) {
 int len = 0;
 void start(int i) 
 {
-    printf("start\n");//debug
+    printf("--start\n");//debug
     char *buf = malloc((i + 1) * sizeof(char));
     memmove(buf, data, i);
-    com[len - 2] = buf;
-    com[len - 1] = 0;
+    _argv[len - 2] = buf;
+    _argv[len - 1] = 0;
     int pid = fork();
     int status;
     if (pid == 0)
@@ -32,15 +32,16 @@ void start(int i)
         int fd = open("/dev/null", O_WRONLY);
         dup2(fd, 1);
         dup2(fd, 2);
-        execvp(com[0], com);
         close(fd);
-        //return 0;
+        execvp(_argv[0], _argv);
     }
     wait(&status);
-    if (status == 0)
+    if (status == 0) {
+        printf("--status0st\n");//debug
         print(i);
-        //printf("%s\n", com[len - 2]);
-    //free(buf);
+        printf("--status0en\n");//debug
+    }
+    free(buf);
 }
 
 int main(int argc, char** argv) {
@@ -50,41 +51,39 @@ int main(int argc, char** argv) {
     while ((opt = getopt(argc, argv, "nzb:")) != -1) {
         switch (opt) {
             case 'n':
-                printf("del=n\n");
+                printf("--del=n\n");
                 delimiter = '\n';//debug
                 break;
             case 'z':
                 delimiter = '\0';
-                printf("del=0\n");//debug
+                printf("--del=0\n");//debug
                 break;
             case 'b':
-                printf("del=b\n");//debug
+                printf("--del=b\n");//debug
                 k = atoi(optarg);
                 break;
         }
     }
-    printf("%d %c\n", k, delimiter);//debug
-    len = argc - optind;
-    com = malloc(len + 2);
+    printf("--%d--%c\n", k, delimiter);//debug
+    len = argc - optind + 2;
+    _argv = malloc(len);
     int j;
-    for (j = 0; j < len; j++) {
-        com[j] = argv[j + optind];
+    for (j = 0; j < len - 2; j++) {
+        _argv[j] = argv[j + optind];
     }
-    len += 2;
     data = malloc(++k * sizeof(char));
     int length = 0, read_count = 0, end_of_file = 0;
     int i = 0;
     while (end_of_file == 0) {
         read_count = read(0, data + length, k - length);
-        printf("%d--%s\n", read_count, data);
         if (read_count < 0) exit(1);
         if (read_count == 0) end_of_file = 1;
         length += read_count;
         for (i = 0; i < length; i++)
             if (data[i] == delimiter) {
-                printf("data[i]==delimiter\n");
+                printf("--data[i]==delimiter\n");//debug
                 if (i < k && data[0] != delimiter) {
-                    printf("i<k\n");//debug
+                    printf("--i<k\n");//debug
                     start(i);
                 }
                 memmove(data, data + i + 1, k - i - 1);
@@ -93,7 +92,7 @@ int main(int argc, char** argv) {
             }
         if (length == k) 
         {
-            printf("length == k, exit");//debug
+            printf("--length == k, exit");//debug
             exit(1);
         }
         if (end_of_file && data[0] != delimiter) {
@@ -101,9 +100,9 @@ int main(int argc, char** argv) {
             start(length);
         }
     }
-    printf("free data\n");//debug
-    printf("\n", data);
-//    free(data);
-    printf("return 0\n");//debug
+    printf("--free data\n");//debug
+    printf("--\n", data);
+    free(data);
+    printf("--return 0\n");//debug
     return 0;
 }
