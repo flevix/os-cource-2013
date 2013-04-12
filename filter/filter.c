@@ -28,7 +28,7 @@ void print(int length) {
     }
 }
 
-void _exec(int i) 
+void _exec(int i)
 {
     char *buf = malloc((i + 1) * sizeof(char));
     memmove(buf, data, i);
@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
                 break;
             case 'b':
                 k = atoi(optarg);
+                if (k < 1) error_exit();
                 break;
         }
     }
@@ -85,6 +86,7 @@ int main(int argc, char** argv) {
         for (i = 0; i < length; i++)
             if (data[i] == delimiter) {
                 if (i < k && data[0] != delimiter) {
+                    data[i] = '\n';
                     _exec(i);
                 }
                 memmove(data, data + i + 1, k - i - 1);
@@ -97,6 +99,7 @@ int main(int argc, char** argv) {
         }
         if (end_of_file && data[0] != delimiter) {
             data[length] = delimiter;
+            data[length] = '\n';
             _exec(length);
         }
     }
