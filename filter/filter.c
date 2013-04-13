@@ -39,6 +39,7 @@ void _exec(int i)
         dup2(fd, 2);
         close(fd);
         execvp(_argv[0], _argv);
+        exit(255); //if execvp don't execute
     }
     int status;
     wait(&status);
@@ -68,14 +69,14 @@ int main(int argc, char** argv) {
     }
     len = argc - optind + 2;
     _argv = malloc(len);
-    int j;
-    for (j = 0; j < len - 2; j++) {
-        _argv[j] = argv[j + optind];
+    int i;
+    for (i = 0; i < len - 2; i++) {
+        _argv[i] = argv[i + optind];
     }
     _argv[len - 1] = 0;
     data = malloc(++k * sizeof(char));
     int length = 0, read_count = 0, end_of_file = 0;
-    int i = 0;
+    i = 0;
     while (end_of_file == 0) {
         read_count = read(0, data + length, k - length);
         if (read_count < 0) error_exit(1);
@@ -83,20 +84,13 @@ int main(int argc, char** argv) {
         length += read_count;
         for (i = 0; i < length; i++)
             if (data[i] == delimiter) {
-                if (i < k && data[0] != delimiter) {
-                    _exec(i);
-                }
+                if (i < k && data[0] != delimiter) _exec(i);
                 memmove(data, data + i + 1, k - i - 1);
                 length -= i + 1;
                 i = 0;
             }
-        if (length == k) 
-        {
-            error_exit();
-        }
-        if (end_of_file && data[0] != delimiter) {
-            _exec(length);
-        }
+        if (length == k) error_exit();
+        if (end_of_file && data[0] != delimiter) _exec(length);
     }
     _free();
     return 0;

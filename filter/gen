@@ -13,8 +13,9 @@ SIZE="$2"
 
 echo " #!/bin/bash
 SIZEF=\`stat -c %s "\$1"\`
-(( MSIZE = (SIZEF)/1024/1024 ))
-if [ \$MSIZE -gt $SIZE ]
+GOODSIZE=$SIZE
+(( GOODSIZE = (GOODSIZE)*1024*1024 ))
+if [ \$SIZEF -gt \$GOODSIZE ]
 then
     exit 0
 fi
@@ -22,7 +23,7 @@ exit 1 " > "$PREDICAT"
 
 chmod +x "$PREDICAT"
 
-find "$DIR" -size "+"$SIZE"M" -print0 | ./filter -z -- "$PREDICAT"
-#find "$DIR" -size "+"$SIZE"M" | ./filter -- "$PREDICAT"
+#find "$DIR" -print0 | ./filter -z -- "$PREDICAT"
+find "$DIR" | ./filter -- "$PREDICAT"
 
 rm "$PREDICAT"
