@@ -1,5 +1,5 @@
 #!/bin/bash
-SIZE=`stat -c %s "$1"`
+SIZE=`stat -c %s "$*"`
 GOODSIZE=2
 (( GOODSIZE = (GOODSIZE)*1024*1024 ))
 if [ $SIZE -gt $GOODSIZE ]

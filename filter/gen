@@ -7,12 +7,12 @@ then
     exit 0
 fi
 
-PREDICAT=/tmp/gen.$$
+PREDICAT=/tmp/filtergen.$$
 DIR="$1"
 SIZE="$2"
 
-echo " #!/bin/bash
-SIZEF=\`stat -c %s "\$1"\`
+echo "#!/bin/bash
+SIZEF=\`stat -c %s \"\$1\"\`
 GOODSIZE=$SIZE
 (( GOODSIZE = (GOODSIZE)*1024*1024 ))
 if [ \$SIZEF -gt \$GOODSIZE ]
