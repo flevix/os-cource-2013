@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <stdio.h>
 #include <fcntl.h>
 
 char *data;
 char **_argv;
 int len = 0;
+char delimiter;
 
 void _free() {
     free(data);
@@ -23,19 +23,16 @@ void print(int length) {
     int write_count = 0;
     while (length > 0) {
         write_count = write(1, data + write_count, length + 1);
-        if (write_count < 0) error_exit(1);
+        if (write_count < 0) error_exit();
         length -= write_count;
     }
 }
 
 void _exec(int i)
 {
-    char *buf = malloc((i + 1) * sizeof(char));
-    memmove(buf, data, i);
-    _argv[len - 2] = buf;
-    int pid = fork();
-    int status;
-    if (pid == 0)
+    data[i] = 0;
+    _argv[len - 2] = data;
+    if (!fork())
     {
         int fd = open("/dev/null", O_WRONLY);
         dup2(fd, 1);
@@ -43,17 +40,18 @@ void _exec(int i)
         close(fd);
         execvp(_argv[0], _argv);
     }
+    int status;
     wait(&status);
-    if (status == 0) {
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+        data[i] = delimiter;
         print(i);
     }
-    free(buf);
 }
 
 int main(int argc, char** argv) {
     int k = 4 * 1024;
     int opt;
-    char delimiter = '\n';
+    delimiter = '\n';
     while ((opt = getopt(argc, argv, "nzb:")) != -1) {
         switch (opt) {
             case 'n':
@@ -86,7 +84,6 @@ int main(int argc, char** argv) {
         for (i = 0; i < length; i++)
             if (data[i] == delimiter) {
                 if (i < k && data[0] != delimiter) {
-                    data[i] = '\n';
                     _exec(i);
                 }
                 memmove(data, data + i + 1, k - i - 1);
@@ -98,8 +95,6 @@ int main(int argc, char** argv) {
             error_exit();
         }
         if (end_of_file && data[0] != delimiter) {
-            data[length] = delimiter;
-            data[length] = '\n';
             _exec(length);
         }
     }

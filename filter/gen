@@ -7,13 +7,14 @@ then
     exit 0
 fi
 
-PREDICAT=/tmp/findGoodSizeFilesPredicat
-DIR=$1
-SIZE=$2
+PREDICAT=/tmp/gen.$$
+DIR="$1"
+SIZE="$2"
+
 echo " #!/bin/bash
 SIZEF=\`stat -c %s "\$1"\`
 (( MSIZE = (SIZEF)/1024/1024 ))
-if [ "\$MSIZE" -gt "$SIZE" ]
+if [ \$MSIZE -gt $SIZE ]
 then
     exit 0
 fi
@@ -21,6 +22,7 @@ exit 1 " > "$PREDICAT"
 
 chmod +x "$PREDICAT"
 
-find "$DIR" -print0 | ./filter -z -- "$PREDICAT"
+find "$DIR" -size "+"$SIZE"M" -print0 | ./filter -z -- "$PREDICAT"
+#find "$DIR" -size "+"$SIZE"M" | ./filter -- "$PREDICAT"
 
 rm "$PREDICAT"

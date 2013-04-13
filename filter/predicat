@@ -1,7 +1,7 @@
 #!/bin/bash
 SIZE=`stat -c %s "$1"`
-(( MSIZE = (SIZE)/1024/1024 ))
-if [ $MSIZE -gt 2 ]
+(( MSIZE = (SIZE)/(1024*1024) ))
+if [ $MSIZE -gt 1 ]
 then
     exit 0
 fi
