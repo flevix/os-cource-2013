@@ -15,15 +15,27 @@ shift
 STATE_FIRST=/tmp/watchthis1.$$
 STATE_SECOND=/tmp/watchthis2.$$
 
-process=$("$@")
-echo "$process" > $STATE_FIRST
-sleep "$time_for_wait"
-process=$("$@")
-echo "$process" > $STATE_SECOND
+echo "" > "$STATE_FIRST"
+echo "" > "$STATE_SECOND"
+
+trap 'rm -f $STATE_FIRST $STATE_SECOND; echo -ne "\n"; exit 130' 2
 
 while [ 1 ]
 do
-    break
+    process=$("$@") #but if process incorrect?
+    echo "$process" > "$STATE_FIRST"
+    echo "Current output -----------------------"
+    cat "$STATE_FIRST"
+    echo "--------------------------------------" 
+    df=$(diff -u "$STATE_FIRST" "$STATE_SECOND")
+    if [ "$df" ]
+    then
+        echo "Difference with the previous status --"
+        echo "$df"
+        echo "--------------------------------------"
+    fi
+    cat "$STATE_FIRST" > "$STATE_SECOND"
+    sleep $time_for_wait
 done
 
-rm -f $STATE_FIRST $STATE_SECOND
+#rm -f $STATE_FIRST $STATE_SECOND #redundant line
