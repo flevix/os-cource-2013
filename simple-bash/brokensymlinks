@@ -2,7 +2,7 @@
 
 ZERO=0
 E_BADARGS=65
-
+shopt -s nullglob
 if [ "$#" -eq "$ZERO" ]
 then
     echo "Usage: `basename "$0"` [files or directories]"
@@ -10,8 +10,9 @@ then
 fi
 
 checkLink () {
-    for arg in "$@"
+    for arg in `echo "$@"`
     do
+        arg=${arg/%\//}
         if [ -d "$arg" ]
         then
             checkLink "$arg"/*
