@@ -1,20 +1,29 @@
 #!/bin/bash
 
-ZERO=0
-E_NOARGS=65
-E_NOPROCESS=2
+MIN_ARGS=2
+E_BAD_ARGS=65
 
-if [ "$#" -eq "$ZERO" ]
+if [ "$#" -lt "$MIN_ARGS" ]
 then
     echo -e "Usage: `basename $0` [time in seconds] [command]"
-    exit $E_NOPROCESS
+    exit $E_BAD_ARGS
 fi
 
 time_for_wait="$1"
 shift
+
+STATE_FIRST=/tmp/watchthis1.$$
+STATE_SECOND=/tmp/watchthis2.$$
+
 process=$("$@")
-echo "$process"
-echo "#########"
+echo "$process" > $STATE_FIRST
 sleep "$time_for_wait"
 process=$("$@")
-echo "$process"
+echo "$process" > $STATE_SECOND
+
+while [ 1 ]
+do
+    break
+done
+
+rm -f $STATE_FIRST $STATE_SECOND
