@@ -2,6 +2,9 @@
 
 MIN_ARGS=2
 E_BAD_ARGS=65
+CURR_OUTPUT="Current output -----------------------"
+DELIMITER="--------------------------------------"
+DIFF="Difference with the previous output --"
 
 if [ "$#" -lt "$MIN_ARGS" ]
 then
@@ -22,17 +25,16 @@ trap 'rm -f $STATE_FIRST $STATE_SECOND; echo -ne "\n"; exit 130' 2
 
 while [ 1 ]
 do
-    process=$("$@") #but if process incorrect?
-    echo "$process" > "$STATE_FIRST"
-    echo "Current output -----------------------"
+    echo "$("$@")" > "$STATE_FIRST"
+    echo "$CURR_OUTPUT"
     cat "$STATE_FIRST"
-    echo "--------------------------------------" 
+    echo "$DELIMITER"
     df=$(diff -u "$STATE_FIRST" "$STATE_SECOND")
     if [ "$df" ]
     then
-        echo "Difference with the previous status --"
+        echo "$DIFF"
         echo "$df"
-        echo "--------------------------------------"
+        echo "$DELIMITER"
     fi
     cat "$STATE_FIRST" > "$STATE_SECOND"
     sleep $time_for_wait
