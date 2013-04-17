@@ -15,8 +15,8 @@ fi
 time_for_wait="$1"
 shift
 
-STATE_FIRST=/tmp/watchthis1.$$
-STATE_SECOND=/tmp/watchthis2.$$
+STATE_FIRST=/tmp/watchthis1.84
+STATE_SECOND=/tmp/watchthis2.84
 
 echo "" > "$STATE_FIRST"
 echo "" > "$STATE_SECOND"
