@@ -7,7 +7,7 @@
 
 const int ARGS = 5;
 
-typedef struct{
+typedef struct {
     int fd;
     int capacity;
     int size;
@@ -29,9 +29,6 @@ stream* init_stream(int fd, int size, char delimiter) {
 
 char* next_token(stream *st) {
     int read_count;
-    char *p;
-    //_print_stream(st);
-    //printf("fd=%d;cap=%d;size=%d;close=%d\n", st->fd, st->capacity, st->size, st->close);
     while (!st->close) {
         if (st->size == st->capacity) exit(5);
         read_count = read(st->fd, st->data + st->capacity, st->size);
@@ -41,33 +38,24 @@ char* next_token(stream *st) {
         if (memchr(st->data, st->delimiter, st->capacity) == NULL) continue;
         else break;
     }
-    p = memchr(st->data, st->delimiter, st->capacity);
-    //printf("debug-0:%d\n%s$\n", st->capacity, st->data);//debug
-    //_print_stream(st);
-    if (p == NULL) {
-        return NULL;
-    }
+    char *p = memchr(st->data, st->delimiter, st->capacity);
+    if (p == NULL) return NULL;
     int token_size = p - st->data + 1;
     char *out = malloc(token_size);
-    out = malloc(token_size);
     memcpy(out, st->data, token_size);
-    //printf("debug-1:\n%s$\n", st->data);
     memmove(st->data, st->data + token_size, st->capacity - token_size);
-    //printf("cap:%d:%d\n", st->capacity, token_size);
     st->capacity -= token_size;
-    //printf("cap:%d:%d\n", st->capacity, token_size);
-    st->data[st->capacity] = '\0';
-    //printf("debug-2:\n%s$\n", st->data);
-    //printf("out");//debug
-    //printf(out);//debug
     return out;
 }
 
-int _cmpstr(char *st1, char *st2) {
+int _strcmp(char *st1, char *st2) {
     if (st1 == NULL && st2 == NULL) return -2;
-    if (st1 != NULL && st2 == NULL) return 1;
-    if (st1 == NULL && st1 != NULL) return -1;
-    return strcmp(st1, st2) >= 0 ? 1 : -1;
+    if (st1 != NULL && st2 == NULL) return -1;
+    if (st1 == NULL && st2 != NULL) return 1;
+    int val = strcmp(st1, st2);
+    if (val < 0) return -1;
+    if (val > 0) return 1;
+    return 0;
 }
 
 void _print(char *data, int length) {
@@ -80,69 +68,43 @@ void _print(char *data, int length) {
     }
 }
 
-int find_next_token(char *data, int len) {
-    char *cpos = memchr(data, '\n', len);
-    if (cpos == NULL) return -1;
-    int pos = (int) (cpos - data);
-    return pos;
-}
-
 int main(int argc, char** argv) {
     if (argc != ARGS) {
         exit(1);
     }
-    char *file1 = argv[1];
-    char *file2 = argv[3];
     int field1 = atoi(argv[2]);
     int field2 = atoi(argv[4]);
-    //printf("%s:%s %s %d %d$\n", "debug", file1, file2, field1, field2);//debug
     int fds[2];
-    fds[0] = open(file1, O_RDONLY);
-    fds[1] = open(file2, O_RDONLY);
-    //if (fds[0] < 0 || fds[1] < 0) exit(2);
-    int eof1 = 0, eof2 = 0;
-    int line1_size = 128, line2_size = 128;
-    int line1_length = 0, line2_length = 0;
-    char *line1 = malloc(line1_size);
-    char *line2 = malloc(line2_size);
-    int read1_count, read2_count;
-    char *cpos1, *cpos2;
-    int pos1, pos2;
-    int cmp = 0;
+    fds[0] = open(argv[1], O_RDONLY);
+    fds[1] = open(argv[3], O_RDONLY);
+    if (fds[0] < 0 || fds[1] < 0) exit(2);
+
     stream *stream1 = init_stream(fds[0], 128, '\n');
-    char *buf;
-    while ((buf = (char*) next_token(stream1)) != NULL) printf(buf);
     stream *stream2 = init_stream(fds[1], 128, '\n');
-    while ((buf = (char*) next_token(stream2)) != NULL) printf(buf);
+    char *token1 = next_token(stream1);
+    char *token2 = next_token(stream2);
+    char *tmp;
+    int cmp = 0;
     while (1) {
-        int pos1 = find_next_token(line1, line1_length);
-        int pos2 = find_next_token(line2, line2_length);
-        if (pos1 == -1 && pos2 == -1) break;
-        if (pos1 >= 0 && pos2 == -1) cmp = -1;
-        if (pos1 == -1 && pos2 >= 0) cmp = 1;
-        if (pos1 >= 0 && pos2 >= 0) {
-            line1[pos1] = '\0';
-            line2[pos2] = '\0';
-            cmp = strcmp(line1, line2);
+        cmp = _strcmp(token1, token2);
+        if (cmp == -2) break;
+        if (cmp == -1 || cmp == 0) {
+            _print(token1, strlen(token1));
+            tmp = next_token(stream1);
+            if (_strcmp(tmp, token1) == -1) {
+                printf("First file not sorted\n");
+                break;
+            }
+            token1 = tmp;
         }
-        //printf("%s:%d#%s::%s*\n", "cmp", cmp, line1, line2);
-        line1[pos1] = '\n';
-        line2[pos2] = '\n';
-        if (cmp <= 0) {
-            //printf("cpos1-print-1$\n");
-            _print(line1, pos1+1);
-            //printf("cpos1-print-2$\n");
-            memmove(line1, line1 + pos1 + 1, line1_length - pos1 - 1);
-            line1_length -= pos1;
-            //printf("##1##$\n");//debug
-        }
-        if (cmp >= 0) {
-            //printf("cpos2-print-1$\n");
-            _print(line2, pos2+1);
-            //printf("cpos2-print-2$\n");
-            memmove(line2, line2 + pos2 + 1, line2_length - pos2 - 1);
-            line2_length -= pos2;
-            //printf("##2##$\n");//debug
+        if (cmp == 1) {
+            _print(token2, strlen(token2));
+            tmp = next_token(stream2);
+            if (_strcmp(tmp, token2) == -1) {
+                printf("Second file not sorted\n");
+                break;
+            }
+            token2 = tmp;
         }
     }
     return 0;
