@@ -16,19 +16,15 @@ typedef struct{
     char delimiter;
 } stream;
 
-stream* init_stream(int x, int fd, int size, char delimiter) { 
+stream* init_stream(int fd, int size, char delimiter) { 
     stream *t = malloc(sizeof(stream));
     t->fd = fd;
-    t->capacity = x;
+    t->capacity = 0;
     t->size = size;
     t->delimiter = delimiter;
     t->data = malloc(size);
     t->close = 0;
     return t;
-}
-
-void _print_stream(stream st) {
-    printf("fd=%d;cap=%d;size=%d;close=%d\n", st.fd, st.capacity, st.size, st.close);
 }
 
 char* next_token(stream *st) {
@@ -67,6 +63,13 @@ char* next_token(stream *st) {
     return out;
 }
 
+int _cmpstr(char *st1, char *st2) {
+    if (st1 == NULL && st2 == NULL) return -2;
+    if (st1 != NULL && st2 == NULL) return 1;
+    if (st1 == NULL && st1 != NULL) return -1;
+    return strcmp(st1, st2) >= 0 ? 1 : -1;
+}
+
 void _print(char *data, int length) {
     int write_count = 0, pos = 0;
     while (length > 0) {
@@ -92,7 +95,7 @@ int main(int argc, char** argv) {
     char *file2 = argv[3];
     int field1 = atoi(argv[2]);
     int field2 = atoi(argv[4]);
-    printf("%s:%s %s %d %d$\n", "debug", file1, file2, field1, field2);//debug
+    //printf("%s:%s %s %d %d$\n", "debug", file1, file2, field1, field2);//debug
     int fds[2];
     fds[0] = open(file1, O_RDONLY);
     fds[1] = open(file2, O_RDONLY);
@@ -106,30 +109,12 @@ int main(int argc, char** argv) {
     char *cpos1, *cpos2;
     int pos1, pos2;
     int cmp = 0;
-    stream *stream1 = init_stream(0, fds[0], 128, '\n');
+    stream *stream1 = init_stream(fds[0], 128, '\n');
     char *buf;
     while ((buf = (char*) next_token(stream1)) != NULL) printf(buf);
-    exit(11);
-//    stream stream2 = init_stream(fds[1], 128, '\n');
+    stream *stream2 = init_stream(fds[1], 128, '\n');
+    while ((buf = (char*) next_token(stream2)) != NULL) printf(buf);
     while (1) {
-        while (!eof1 && cmp >= 0) {
-            if (line1_length == line1_size) exit(5);
-            read1_count = read(fds[0], line1 + line1_length, line1_size);
-            line1_length += read1_count;
-            if (read1_count == 0) eof1 = 1;
-            if (read1_count < 0) exit(7);
-            if (memchr(line1, '\n', line1_length) == NULL) continue;
-            else break;
-        }
-        while (!eof2 && cmp >= 0) {
-            if (line2_length == line2_size) exit(6);
-            read2_count = read(fds[1], line2 + line2_length, line2_size);
-            line2_length += read2_count;
-            if (read2_count == 0) eof2 = 1;
-            if (read2_count < 0) exit(8);
-            if (memchr(line2, '\n', line2_length) == NULL) continue;
-            else break;
-        }
         int pos1 = find_next_token(line1, line1_length);
         int pos2 = find_next_token(line2, line2_length);
         if (pos1 == -1 && pos2 == -1) break;
