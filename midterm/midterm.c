@@ -7,34 +7,45 @@
 
 const int ARGS = 5;
 
-struct {
+typedef struct{
     int fd;
-    int capacity = 0;
+    int capacity;
     int size;
-    int close = 0;
+    int close;
     char *data;
-    char delimiter = '\n';
+    char delimiter;
 } stream;
 
-char* next_token(stream) {
+stream* init_stream(int fd, int size, char delimiter) { 
+    stream *t = malloc(sizeof(stream));
+    t->fd = fd;
+    t->capacity = 0;
+    t->size = size;
+    t->delimiter = delimiter;
+    t->data = malloc(size);
+    t->close = 0;
+    return t;
+}
+
+char* next_token(stream st) {
     int read_count;
     char *p;
-    while (!stream.close) {
-        if (stream.size == stream.capacity) exit(5);
-        read_count = read(stream.fd, stream.data + stream.capacity, stream.size_;
+    while (!st.close) {
+        if (st.size == st.capacity) exit(5);
+        read_count = read(st.fd, st.data + st.capacity, st.size);
         if (read_count < 0) exit(6);
-        if (read_count == 0) close = 1;
-        if (memchr(stream.data, stream.delimiter, stream.capacity) == NULL) continue;
+        if (read_count == 0) st.close = 1;
+        if (memchr(st.data, st.delimiter, st.capacity) == NULL) continue;
         else break;
     }
-    p = memchr(stream.data, stream, delimiter, stream.capacity);
-    if (p == NULL) return NULL
-    int token_size = p - stream.data + 1;
+    p = memchr(st.data, st.delimiter, st.capacity);
+    if (p == NULL) return NULL;
+    int token_size = p - st.data + 1;
     char *out = malloc(token_size);
     out = malloc(token_size);
-    memcpy(out, stream.data, token_size)
-    memmove(stream.data, stream.data + token_size, stream.capacity - token_size);
-    return &out;
+    memcpy(out, st.data, token_size);
+    memmove(st.data, st.data + token_size, st.capacity - token_size);
+    return out;
 }
 
 void _print(char *data, int length) {
@@ -67,7 +78,6 @@ int main(int argc, char** argv) {
     fds[0] = open(file1, O_RDONLY);
     fds[1] = open(file2, O_RDONLY);
     //if (fds[0] < 0 || fds[1] < 0) exit(2);
-    char delimiter = ' '; 
     int eof1 = 0, eof2 = 0;
     int line1_size = 128, line2_size = 128;
     int line1_length = 0, line2_length = 0;
@@ -77,6 +87,10 @@ int main(int argc, char** argv) {
     char *cpos1, *cpos2;
     int pos1, pos2;
     int cmp = 0;
+    stream *stream1 = init_stream(fds[0], 128, '\n');
+    printf("%d::%d\n", fds[0], stream1->fd);
+    exit(11);
+//    stream stream2 = init_stream(fds[1], 128, '\n');
     while (1) {
         while (!eof1 && cmp >= 0) {
             if (line1_length == line1_size) exit(5);
