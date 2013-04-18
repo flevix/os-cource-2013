@@ -68,6 +68,8 @@ void _print(char *data, int length) {
     }
 }
 
+char *tmp;
+
 int main(int argc, char** argv) {
     if (argc != ARGS) {
         exit(1);
@@ -83,29 +85,39 @@ int main(int argc, char** argv) {
     stream *stream2 = init_stream(fds[1], 128, '\n');
     char *token1 = next_token(stream1);
     char *token2 = next_token(stream2);
-    char *tmp;
     int cmp = 0;
     while (1) {
         cmp = _strcmp(token1, token2);
-        if (cmp == -2) break;
+        if (cmp == -2) {
+            if (tmp != NULL) free(tmp); 
+            break;
+        }
         if (cmp == -1 || cmp == 0) {
             _print(token1, strlen(token1));
             tmp = next_token(stream1);
             if (_strcmp(tmp, token1) == -1) {
-                printf("First file not sorted\n");
+                printf("%s\n", "First file not sorted");
+                free(token1);
+                free(tmp);
                 break;
             }
+            free(token1);
             token1 = tmp;
         }
         if (cmp == 1) {
             _print(token2, strlen(token2));
             tmp = next_token(stream2);
             if (_strcmp(tmp, token2) == -1) {
-                printf("Second file not sorted\n");
+                printf("%s\n", "Second file not sorted");
+                free(token2);
+                free(tmp);
                 break;
             }
+            free(token2);
             token2 = tmp;
         }
     }
+    free(stream1);
+    free(stream2);
     return 0;
 }
