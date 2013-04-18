@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <string.h>
 
 const int ARGS = 5;
 int main(int argc, char** argv) {
@@ -19,18 +20,38 @@ int main(int argc, char** argv) {
     fds[1] = open(file2, O_RDONLY);
     //if (fds[0] < 0 || fds[1] < 0) exit(2);
     char delimiter = ' '; 
-    int eof = 0;
-    int line1_size = 256, line2_size = 256;
+    int eof1 = 0, eof2 = 0;
+    int line1_size = 64, line2_size = 64;
     int line1_length = 0, line2_length = 0;
     char *line1 = malloc(line1_size);
     char *line2 = malloc(line2_size);
-    int read1_count;
-    while (!eof) {
+    int read1_count, read2_count;
+    char *pos1, *pos2;
+    while (!eof1) {
         read1_count = read(fds[0], line1 + line1_length, line1_size);
+        if (read1_count == 0) eof1 = 1;
         line1_length += read1_count;
-        if (line1_length == line1_size) {
-            line1_size *= 2;
-            line1 = realloc((void*) line1, line1_size);
+        pos1 = memchr(line1, '\n', line1_length);
+        //while ((pos1 = memchr ...) != NULL
+        if (pos1 == NULL) {
+            if (line1_length == line2_size) {
+                exit(3);
+            }
+            continue;
+        }
+        while (!eof2) {
+            read2_count = read(fds[1], line2 + line2_length, line2_size);
+            if (read2_count == 0) eof2 = 1;
+            line2_length += read2_count;
+            //while ((pos2 = memchr ...) != NULL)
+            pos2 = memchr(line2, '\n', line2_length);
+            if (pos2 == NULL) {
+                if (line2_length == line2_size) {
+                    exit(4);
+                }
+                continue;
+            }
+            
         }
         break;
     }
