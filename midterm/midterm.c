@@ -6,6 +6,54 @@
 #include <string.h>
 
 const int ARGS = 5;
+
+struct {
+    int fd;
+    int capacity = 0;
+    int size;
+    int close = 0;
+    char *data;
+    char delimiter = '\n';
+} stream;
+
+char* next_token(stream) {
+    int read_count;
+    char *p;
+    while (!stream.close) {
+        if (stream.size == stream.capacity) exit(5);
+        read_count = read(stream.fd, stream.data + stream.capacity, stream.size_;
+        if (read_count < 0) exit(6);
+        if (read_count == 0) close = 1;
+        if (memchr(stream.data, stream.delimiter, stream.capacity) == NULL) continue;
+        else break;
+    }
+    p = memchr(stream.data, stream, delimiter, stream.capacity);
+    if (p == NULL) return NULL
+    int token_size = p - stream.data + 1;
+    char *out = malloc(token_size);
+    out = malloc(token_size);
+    memcpy(out, stream.data, token_size)
+    memmove(stream.data, stream.data + token_size, stream.capacity - token_size);
+    return &out;
+}
+
+void _print(char *data, int length) {
+    int write_count = 0, pos = 0;
+    while (length > 0) {
+        write_count = write(1, data + pos, length);
+        if (write_count < 0) exit(5);
+        length -= write_count;
+        pos += write_count;
+    }
+}
+
+int find_next_token(char *data, int len) {
+    char *cpos = memchr(data, '\n', len);
+    if (cpos == NULL) return -1;
+    int pos = (int) (cpos - data);
+    return pos;
+}
+
 int main(int argc, char** argv) {
     if (argc != ARGS) {
         exit(1);
@@ -14,46 +62,69 @@ int main(int argc, char** argv) {
     char *file2 = argv[3];
     int field1 = atoi(argv[2]);
     int field2 = atoi(argv[4]);
-    printf("%s\n%s\n%d\n%d\n", file1, file2, field1, field2);//debug
+    printf("%s:%s %s %d %d$\n", "debug", file1, file2, field1, field2);//debug
     int fds[2];
     fds[0] = open(file1, O_RDONLY);
     fds[1] = open(file2, O_RDONLY);
     //if (fds[0] < 0 || fds[1] < 0) exit(2);
     char delimiter = ' '; 
     int eof1 = 0, eof2 = 0;
-    int line1_size = 64, line2_size = 64;
+    int line1_size = 128, line2_size = 128;
     int line1_length = 0, line2_length = 0;
     char *line1 = malloc(line1_size);
     char *line2 = malloc(line2_size);
     int read1_count, read2_count;
-    char *pos1, *pos2;
-    while (!eof1) {
-        read1_count = read(fds[0], line1 + line1_length, line1_size);
-        if (read1_count == 0) eof1 = 1;
-        line1_length += read1_count;
-        pos1 = memchr(line1, '\n', line1_length);
-        //while ((pos1 = memchr ...) != NULL
-        if (pos1 == NULL) {
-            if (line1_length == line2_size) {
-                exit(3);
-            }
-            continue;
+    char *cpos1, *cpos2;
+    int pos1, pos2;
+    int cmp = 0;
+    while (1) {
+        while (!eof1 && cmp >= 0) {
+            if (line1_length == line1_size) exit(5);
+            read1_count = read(fds[0], line1 + line1_length, line1_size);
+            line1_length += read1_count;
+            if (read1_count == 0) eof1 = 1;
+            if (read1_count < 0) exit(7);
+            if (memchr(line1, '\n', line1_length) == NULL) continue;
+            else break;
         }
-        while (!eof2) {
+        while (!eof2 && cmp >= 0) {
+            if (line2_length == line2_size) exit(6);
             read2_count = read(fds[1], line2 + line2_length, line2_size);
-            if (read2_count == 0) eof2 = 1;
             line2_length += read2_count;
-            //while ((pos2 = memchr ...) != NULL)
-            pos2 = memchr(line2, '\n', line2_length);
-            if (pos2 == NULL) {
-                if (line2_length == line2_size) {
-                    exit(4);
-                }
-                continue;
-            }
-            
+            if (read2_count == 0) eof2 = 1;
+            if (read2_count < 0) exit(8);
+            if (memchr(line2, '\n', line2_length) == NULL) continue;
+            else break;
         }
-        break;
+        int pos1 = find_next_token(line1, line1_length);
+        int pos2 = find_next_token(line2, line2_length);
+        if (pos1 == -1 && pos2 == -1) break;
+        if (pos1 >= 0 && pos2 == -1) cmp = -1;
+        if (pos1 == -1 && pos2 >= 0) cmp = 1;
+        if (pos1 >= 0 && pos2 >= 0) {
+            line1[pos1] = '\0';
+            line2[pos2] = '\0';
+            cmp = strcmp(line1, line2);
+        }
+        //printf("%s:%d#%s::%s*\n", "cmp", cmp, line1, line2);
+        line1[pos1] = '\n';
+        line2[pos2] = '\n';
+        if (cmp <= 0) {
+            //printf("cpos1-print-1$\n");
+            _print(line1, pos1+1);
+            //printf("cpos1-print-2$\n");
+            memmove(line1, line1 + pos1 + 1, line1_length - pos1 - 1);
+            line1_length -= pos1;
+            //printf("##1##$\n");//debug
+        }
+        if (cmp >= 0) {
+            //printf("cpos2-print-1$\n");
+            _print(line2, pos2+1);
+            //printf("cpos2-print-2$\n");
+            memmove(line2, line2 + pos2 + 1, line2_length - pos2 - 1);
+            line2_length -= pos2;
+            //printf("##2##$\n");//debug
+        }
     }
     return 0;
 }
