@@ -16,10 +16,10 @@ typedef struct{
     char delimiter;
 } stream;
 
-stream* init_stream(int fd, int size, char delimiter) { 
+stream* init_stream(int x, int fd, int size, char delimiter) { 
     stream *t = malloc(sizeof(stream));
     t->fd = fd;
-    t->capacity = 0;
+    t->capacity = x;
     t->size = size;
     t->delimiter = delimiter;
     t->data = malloc(size);
@@ -27,24 +27,43 @@ stream* init_stream(int fd, int size, char delimiter) {
     return t;
 }
 
-char* next_token(stream st) {
+void _print_stream(stream st) {
+    printf("fd=%d;cap=%d;size=%d;close=%d\n", st.fd, st.capacity, st.size, st.close);
+}
+
+char* next_token(stream *st) {
     int read_count;
     char *p;
-    while (!st.close) {
-        if (st.size == st.capacity) exit(5);
-        read_count = read(st.fd, st.data + st.capacity, st.size);
+    //_print_stream(st);
+    //printf("fd=%d;cap=%d;size=%d;close=%d\n", st->fd, st->capacity, st->size, st->close);
+    while (!st->close) {
+        if (st->size == st->capacity) exit(5);
+        read_count = read(st->fd, st->data + st->capacity, st->size);
+        st->capacity += read_count;
         if (read_count < 0) exit(6);
-        if (read_count == 0) st.close = 1;
-        if (memchr(st.data, st.delimiter, st.capacity) == NULL) continue;
+        if (read_count == 0) st->close = 1;
+        if (memchr(st->data, st->delimiter, st->capacity) == NULL) continue;
         else break;
     }
-    p = memchr(st.data, st.delimiter, st.capacity);
-    if (p == NULL) return NULL;
-    int token_size = p - st.data + 1;
+    p = memchr(st->data, st->delimiter, st->capacity);
+    //printf("debug-0:%d\n%s$\n", st->capacity, st->data);//debug
+    //_print_stream(st);
+    if (p == NULL) {
+        return NULL;
+    }
+    int token_size = p - st->data + 1;
     char *out = malloc(token_size);
     out = malloc(token_size);
-    memcpy(out, st.data, token_size);
-    memmove(st.data, st.data + token_size, st.capacity - token_size);
+    memcpy(out, st->data, token_size);
+    //printf("debug-1:\n%s$\n", st->data);
+    memmove(st->data, st->data + token_size, st->capacity - token_size);
+    //printf("cap:%d:%d\n", st->capacity, token_size);
+    st->capacity -= token_size;
+    //printf("cap:%d:%d\n", st->capacity, token_size);
+    st->data[st->capacity] = '\0';
+    //printf("debug-2:\n%s$\n", st->data);
+    //printf("out");//debug
+    //printf(out);//debug
     return out;
 }
 
@@ -87,8 +106,9 @@ int main(int argc, char** argv) {
     char *cpos1, *cpos2;
     int pos1, pos2;
     int cmp = 0;
-    stream *stream1 = init_stream(fds[0], 128, '\n');
-    printf("%d::%d\n", fds[0], stream1->fd);
+    stream *stream1 = init_stream(0, fds[0], 128, '\n');
+    char *buf;
+    while ((buf = (char*) next_token(stream1)) != NULL) printf(buf);
     exit(11);
 //    stream stream2 = init_stream(fds[1], 128, '\n');
     while (1) {
