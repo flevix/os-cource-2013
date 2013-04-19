@@ -43,12 +43,14 @@ char* next_token(stream *st) {
     int token_size = p - st->data + 1;
     char *out = malloc(token_size);
     memcpy(out, st->data, token_size);
+    out[token_size - 1] = '\0';
     memmove(st->data, st->data + token_size, st->capacity - token_size);
     st->capacity -= token_size;
     return out;
 }
 
-int _strcmp(char *st1, char *st2) {
+int _strcmp(int x, char *st1, char *st2) {
+    printf("%d::sc:%s\nsc:%s\n", x, st1, st2);
     if (st1 == NULL && st2 == NULL) return -2;
     if (st1 != NULL && st2 == NULL) return -1;
     if (st1 == NULL && st2 != NULL) return 1;
@@ -66,14 +68,33 @@ void _print(char *data, int length) {
         length -= write_count;
         pos += write_count;
     }
+    write(1, "\n", 1);
 }
 
-char *tmp;
+int __print(char *token, stream *stream) {
+    _print(token, strlen(token));
+    char *next = next_token(stream);
+    if (next == NULL) {
+        token = NULL;
+        return 0;
+    }
+    if (_strcmp(0, next, token) == -1) {
+        printf("#%s\n#%s\n", token, next);
+        printf("%s\n", "Files not sorted");
+        //free(token);
+        //free(next);
+        return 1;
+    }
+    if (next != NULL) {
+        free(token);
+        strcpy(token, next);
+    }
+    //free(next);
+    return 0;
+}
 
 int main(int argc, char** argv) {
-    if (argc != ARGS) {
-        exit(1);
-    }
+    if (argc != ARGS) exit(1);
     int field1 = atoi(argv[2]);
     int field2 = atoi(argv[4]);
     int fds[2];
@@ -87,34 +108,21 @@ int main(int argc, char** argv) {
     char *token2 = next_token(stream2);
     int cmp = 0;
     while (1) {
-        cmp = _strcmp(token1, token2);
+        cmp = _strcmp(1, token1, token2);
+        printf("cmp=%d\n", cmp);
+        printf("token1:%s\ntoken2:%s\n", token1, token2);
         if (cmp == -2) {
-            if (tmp != NULL) free(tmp); 
             break;
-        }
-        if (cmp == -1 || cmp == 0) {
-            _print(token1, strlen(token1));
-            tmp = next_token(stream1);
-            if (_strcmp(tmp, token1) == -1) {
-                printf("%s\n", "First file not sorted");
-                free(token1);
-                free(tmp);
+        } else if (cmp == -1 || cmp == 0) {
+            if (__print(token1, stream1)) {
+                printf("%s\n", "first file end");
                 break;
             }
-            free(token1);
-            token1 = tmp;
-        }
-        if (cmp == 1) {
-            _print(token2, strlen(token2));
-            tmp = next_token(stream2);
-            if (_strcmp(tmp, token2) == -1) {
-                printf("%s\n", "Second file not sorted");
-                free(token2);
-                free(tmp);
+        } else if (cmp == 1) {
+            if (__print(token2, stream2)) {
+                printf("%s\n", "second file end");
                 break;
             }
-            free(token2);
-            token2 = tmp;
         }
     }
     free(stream1);
