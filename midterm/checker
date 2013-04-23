@@ -31,7 +31,8 @@ do
     fi
     let "i += 1"
 done
-$(rm -f "$file1" "$file2")
+#$(rm -f "$file1" "$file2")
+
 #$(./gen "$1")
 #$(./pr "$1" "$buf" > "$2" "$buf")
 #while read line

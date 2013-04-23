@@ -18,7 +18,6 @@ lines=$((RANDOM%100))
 while [ "$lines" -gt "$zero" ]
 do
     length=$((RANDOM%$buf + RANDOM%($buf/2)))
-    length="$buf"
     while [ "$length" -gt "$zero" ]
     do
         echo -n "${Alphabet[$((RANDOM%num_words))]}"
