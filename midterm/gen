@@ -1,0 +1,26 @@
+#!/bin/bash
+zero=0
+buf=128
+path=./test.txt
+chmod +w "$path"
+
+exec 7>&1
+exec > "$path"
+
+lines=$((RANDOM%100))
+while [ "$length" -gt ]
+do
+    length=$((RANDOM%200 + 64))
+    while [ "$length" -gt "$zero" ]
+    do
+        echo -n "a"
+        (( length = length - 1 ))
+    done 
+    if [ "$length" -gt "$buf" ]
+    then
+        exec 1>&7 7>&-
+        exit 0
+    fi
+    echo ""
+    (( lines = lines - 1 ))
+done
