@@ -1,15 +1,49 @@
 #!/bin/bash
-buf=128
-while read line
+
+ARGS=3
+zero=0
+
+if [ "$#" -ne "$ARGS" ]
+then
+    echo "Usage: $(basename $0) [file1] [file2] [buffer size in bytes]"
+    exit 0
+fi
+
+file1="$1"
+file2="$2"
+buf="$3"
+
+test_count=$((RANDOM%50))
+i=0
+
+while [ "$i" -lt "$test_count" ]
 do
-    echo "${#line}:"$line""
-done < out
-echo "--------------"
-while read line
-do
-    echo "${#line}:"$line""
-    if [ ${#line} -gt "$buf" ]
+    $(./gen "$file1" "$buf")
+    $(./pr "$file1" "$buf" > "$file2")
+    first=$(diff --left-column --unchanged-group-format='' "$file1" "$file2" | head -1)
+    len="${#first}"
+    if [ "$len" -ge "$buf" -o "$len" -eq "$zero" ]
     then
-        break
+        echo "test #"$i" done"
+    else
+        echo "test #"$i" failed"
+        exit
     fi
-done <test.t
+    let "i += 1"
+done
+$(rm -f "$file1" "$file2")
+#$(./gen "$1")
+#$(./pr "$1" "$buf" > "$2" "$buf")
+#while read line
+#do
+#    echo "${#line}:"$line""
+#done < "$2"
+#echo "--------------"
+#while read line
+#do
+#    echo "${#line}:"$line""
+#    if [ ${#line} -gt "$buf" ]
+#    then
+#        break
+#    fi
+#done < "$1"

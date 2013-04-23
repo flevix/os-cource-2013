@@ -70,13 +70,13 @@ char* next_token(STREAM* stream) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 2) exit(1);
+    if (argc != 3) exit(1);
     fds[0] = open(argv[1], O_RDONLY);
     //fds[1] = open(argv[2], O_RDONLY);
     //if (fds[0] < 0 || fds[1] < 0) exit(2);
     if (fds[0] < 0) exit(2);
-    
-    stream1 = init_stream(fds[0], 128, '\n');
+    int buf_capacity = atoi(argv[2]); 
+    stream1 = init_stream(fds[0], buf_capacity, '\n');
     //stream2 = init_stream(fds[1], 128, '\n');
     char* t;
     while ((t = next_token(stream1)) != NULL) {
