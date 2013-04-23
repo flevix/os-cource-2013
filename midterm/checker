@@ -1,0 +1,15 @@
+#!/bin/bash
+buf=128
+while read line
+do
+    echo "${#line}:"$line""
+done < out
+echo "--------------"
+while read line
+do
+    echo "${#line}:"$line""
+    if [ ${#line} -gt "$buf" ]
+    then
+        break
+    fi
+done <test.t

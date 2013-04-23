@@ -1,26 +1,32 @@
 #!/bin/bash
+
 zero=0
 buf=128
-path=./test.txt
+path=./test.t
+declare -a Alphabet
+Alphabet=(" " a b c d e f g h i j k l m n o p q r s t u v w x y z)
+num_words=${#Alphabet[*]}
+
+$(touch "$path")
 chmod +w "$path"
 
 exec 7>&1
 exec > "$path"
 
-lines=$((RANDOM%100))
-while [ "$length" -gt ]
+#lines=$((RANDOM%100))
+lines=10
+while [ "$lines" -gt "$zero" ]
 do
-    length=$((RANDOM%200 + 64))
+    length=$((RANDOM%200))
+    #let length=127
     while [ "$length" -gt "$zero" ]
     do
-        echo -n "a"
-        (( length = length - 1 ))
+        echo -n "${Alphabet[$((RANDOM%num_words))]}"
+        let "length -= 1"
     done 
-    if [ "$length" -gt "$buf" ]
-    then
-        exec 1>&7 7>&-
-        exit 0
-    fi
     echo ""
-    (( lines = lines - 1 ))
+    let "lines -= 1"
 done
+
+exec 1>&7 7>&-
+exit 0

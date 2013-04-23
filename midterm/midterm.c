@@ -45,7 +45,6 @@ void err_exit(int code) {
 }
 
 char* next_token(STREAM* stream) {
-    if (stream->size == stream->capacity) err_exit(3);
     int read_count;
     while (!stream->close) {
         read_count = read(stream->fd, stream->data + stream->size, stream->capacity - stream->size);
@@ -57,7 +56,10 @@ char* next_token(STREAM* stream) {
         else break;
     }
     char* pos_delimiter = (char*) memchr(stream->data, stream->delimiter, stream->size);
-    if (pos_delimiter == NULL) return NULL;
+    if (pos_delimiter == NULL) {
+        if (stream->size == stream->capacity) err_exit(3);
+        return NULL;
+    }
     int token_size = pos_delimiter - stream->data + 1;
     char* token = (char*) malloc(token_size * sizeof(char));
     memcpy(token, stream->data, token_size);
