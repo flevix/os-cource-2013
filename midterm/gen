@@ -1,16 +1,19 @@
 #!/bin/bash
 
 out_file="$1"
-buf="$2"
+good_file="$2"
+buf="$3"
 zero=0
 
 declare -a Alphabet
 Alphabet=(" " a b c d e f g h i j k l m n o p q r s t u v w x y z)
 num_words=${#Alphabet[*]}
 
-$(touch "$out_file")
+cp /dev/null "$out_file"
+cp /dev/null "$good_file"
 chmod +w "$out_file"
-
+chmod +w "$good_file"
+f=0
 exec 7>&1
 exec > "$out_file"
 
@@ -18,6 +21,11 @@ lines=$((RANDOM%100))
 while [ "$lines" -gt "$zero" ]
 do
     length=$((RANDOM%$buf + RANDOM%($buf/2)))
+    if [ "$f" -eq "$zero" -a "$length" -ge "$buf" ]
+    then
+        cat "$out_file" > "$good_file"
+        f=1
+    fi
     while [ "$length" -gt "$zero" ]
     do
         echo -n "${Alphabet[$((RANDOM%num_words))]}"
@@ -28,4 +36,8 @@ do
 done
 
 exec 1>&7 7>&-
+if [ "$f" -eq "$zero" ]
+then
+    cat "$out_file" > "$good_file"
+fi
 exit 0
