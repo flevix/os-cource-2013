@@ -68,7 +68,6 @@ std::deque<char*> next_list(Stream* stream) {
 }
 
 void start(std::deque<char*> list, std::vector<int> pids) {
-    char** com = (char**) malloc(list.size() + 1);
     pid_t pid = fork();
     if (pid) {
         pids.push_back(pid);
@@ -84,14 +83,14 @@ void start(std::deque<char*> list, std::vector<int> pids) {
         list.pop_front();
         list.pop_back();
         size_t i;
+        char** com = (char**) malloc(list.size() + 1);
         for (i = 0; i < list.size(); i++) {
-            com = &list[i];
+            com[i] = list[i];
         }
         com[list.size()] = NULL;
         execvp(com[0], com);
         exit(255);
     }
-    free(com);
 }
 
 void good_free(Stream* stream, std::deque< std::deque<char*> > lists) {
