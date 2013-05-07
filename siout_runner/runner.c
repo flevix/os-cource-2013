@@ -8,20 +8,14 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-
 typedef struct {
     int fd;
-    int capacity; //size of allocated storage capacity
+    int capacity;
     int size;
-    int close; //end of fd
+    int close;
     char delimiter;
-    char* data; //выдаёт объект, на который указывает данный указатель
+    char* data;
 } STREAM;
-
-STREAM* stream;
-std::vector<int> pids;
-std::deque<char*> list;
-std::deque< std::deque<char*> > lists;
 
 STREAM* init_stream(int fd) {
     STREAM *t = (STREAM*) malloc(sizeof(STREAM));
@@ -36,8 +30,9 @@ STREAM* init_stream(int fd) {
     return t;
 }
 
-void good_free() {
+void good_free(STREAM* stream, std::deque< std::deque<char*> > lists) {
     size_t i, j;
+    std::deque<char*> list;
     for (i = 0; i < lists.size(); i++) {
         list = lists[i];
         for (j = 0; j < list.size(); j++) {
@@ -47,38 +42,34 @@ void good_free() {
     free(stream);
 }
 
-void err_exit(int code) {
-    good_free();
-    exit(code);
-}
-char* next_token() {
+char* next_token(STREAM* stream) {
     char* pos = (char*) memchr(stream->data, stream->delimiter, stream->size);
     int read_count;
     while (pos == NULL && (!stream->close)) {
         read_count = read(stream->fd, stream->data + stream->size, 
             stream->capacity - stream->size);
-        if (read_count < 0) err_exit(6);
+        if (read_count < 0) exit(6);
         stream->size += read_count;
         if (read_count == 0) stream->close = 1;
         pos = (char*) memchr(stream->data, stream->delimiter, stream->size);
     }
     if (pos == NULL) {
-        if (stream->size == stream->capacity) err_exit(7);
+        if (stream->size == stream->capacity) exit(7);
         return NULL;
     }
     int token_size = pos - stream->data + 1;
     char* token = (char*) malloc(token_size);
-    if (token == NULL) err_exit(8);
+    if (token == NULL) exit(8);
     memcpy(token, stream->data, token_size);
     memmove(stream->data, stream->data + token_size, stream->size - token_size);
     stream->size -= token_size;
     return token;
 }
 
-std::deque<char*> next_list() {
+std::deque<char*> next_list(STREAM* stream) {
     char *t;
     std::deque<char*> list;
-    while (((t = next_token()) != NULL) && (strcmp(t, "\0") != 0)) {
+    while (((t = next_token(stream)) != NULL) && (strcmp(t, "\0") != 0)) {
         list.push_back(t);
     }
     if (list.size() < 3) {
@@ -87,7 +78,7 @@ std::deque<char*> next_list() {
     return list;
 }
 
-void start(std::deque<char*> list) {
+void start(std::deque<char*> list, std::vector<int> pids) {
     char** com = (char**) malloc(list.size() + 1);
     pid_t pid = fork();
     if (pid) {
@@ -118,20 +109,26 @@ int main(int argc, char** argv) {
     if (argc != 2) exit(1);
     int fds = open(argv[1], O_RDONLY);
     if (fds < 0) exit(2);
+
+    STREAM* stream;
+    std::vector<int> pids;
+    std::deque<char*> list;
+    std::deque< std::deque<char*> > lists;
+
     stream = init_stream(fds);
     while (1) {
-        list = next_list();
+        list = next_list(stream);
         if (list.size() == 0) break;
         lists.push_back(list);
     }
     size_t i;
     for (i = 0; i < lists.size(); i++) {
-        start(lists[i]);
+        start(lists[i], pids);
     }
     int status;
     for (i = 0; i < pids.size(); i++) {
         waitpid(pids[i], &status, 0);
     }
-    good_free();
+    good_free(stream, lists);
     return 0;
 }
