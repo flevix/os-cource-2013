@@ -15,10 +15,10 @@ typedef struct {
     int close;
     char delimiter;
     char* data;
-} STREAM;
+} Stream;
 
-STREAM* init_stream(int fd) {
-    STREAM *t = (STREAM*) malloc(sizeof(STREAM));
+Stream* init_stream(int fd) {
+    Stream *t = (Stream*) malloc(sizeof(Stream));
     if (t == NULL) exit(4);
     t->fd = fd;
     t->capacity = 1024;
@@ -30,19 +30,8 @@ STREAM* init_stream(int fd) {
     return t;
 }
 
-void good_free(STREAM* stream, std::deque< std::deque<char*> > lists) {
-    size_t i, j;
-    std::deque<char*> list;
-    for (i = 0; i < lists.size(); i++) {
-        list = lists[i];
-        for (j = 0; j < list.size(); j++) {
-            free(list[j]);
-        }
-    }
-    free(stream);
-}
 
-char* next_token(STREAM* stream) {
+char* next_token(Stream* stream) {
     char* pos = (char*) memchr(stream->data, stream->delimiter, stream->size);
     int read_count;
     while (pos == NULL && (!stream->close)) {
@@ -66,7 +55,7 @@ char* next_token(STREAM* stream) {
     return token;
 }
 
-std::deque<char*> next_list(STREAM* stream) {
+std::deque<char*> next_list(Stream* stream) {
     char *t;
     std::deque<char*> list;
     while (((t = next_token(stream)) != NULL) && (strcmp(t, "\0") != 0)) {
@@ -105,12 +94,23 @@ void start(std::deque<char*> list, std::vector<int> pids) {
     free(com);
 }
 
+void good_free(Stream* stream, std::deque< std::deque<char*> > lists) {
+    size_t i, j;
+    std::deque<char*> list;
+    for (i = 0; i < lists.size(); i++) {
+        list = lists[i];
+        for (j = 0; j < list.size(); j++) {
+            free(list[j]);
+        }
+    }
+    free(stream);
+}
 int main(int argc, char** argv) {
     if (argc != 2) exit(1);
     int fds = open(argv[1], O_RDONLY);
     if (fds < 0) exit(2);
 
-    STREAM* stream;
+    Stream* stream;
     std::vector<int> pids;
     std::deque<char*> list;
     std::deque< std::deque<char*> > lists;
