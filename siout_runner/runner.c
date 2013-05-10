@@ -102,6 +102,7 @@ void good_free(Stream* stream, std::deque< std::deque<char*> > lists) {
             free(list[j]);
         }
     }
+    free(stream->data);
     free(stream);
 }
 int main(int argc, char** argv) {
