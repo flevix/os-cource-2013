@@ -6,16 +6,17 @@ typedef enum {
     NORMAL, IGNORING
 } state;
 
-void print2(int fd, char *buf, int _length) {
+void print2(int fd, char *buf, int _start, int end) {
     int i;
     for (i = 0; i < 2; i++) {
         int write_count = 0;
-        int length = _length;
-        while (length > 0) {
-            write_count = write(fd, buf + write_count, length + 1);
-            if (write_count < 0)
+        int start = _start;
+        while (start < end) {
+            write_count = write(fd, buf + start, end - start);
+            if (write_count < 0) {
                 exit(4);
-            length -= write_count;
+            }
+            start += write_count;
         }
     }
 }
@@ -45,27 +46,29 @@ int main(int argc, char** argv) {
             end_of_file = 1;
         length += read_count;
 
-        int i;
-        for (i = 0; i < length; i++) {
-            if (data[i] == delimiter) {
+        int first = 0;
+        int last;
+        for (last = 0; last < length; last++) {
+            if (data[last] == delimiter) {
                 if (last_state == IGNORING) {
                     last_state = NORMAL;
-                } else if (data[0] != delimiter) { //??54
-                    print2(fd_write, data, i);
+                } else if (first != last) {
+                    print2(fd_write, data, first, last + 1);
                 }
-                //i think it's need rewrite
-                memmove(data, data + i + 1, (k - i - 1) * sizeof(char)); //??56
-                length -= i + 1;
-                i = 0;
+                first = last + 1;
             }
         }
+        memmove(data, data + first, (k - first) * sizeof(char));
+        length -= first;
+
         if (length == k) { //delimiter not found -> ignoring
             last_state = IGNORING;
             length = 0;
         }
-        if (end_of_file && last_state != IGNORING && data[0] != delimiter) {
+        if (length > 0 && end_of_file
+                && last_state != IGNORING && data[0] != delimiter) {
             data[length] = delimiter; //??64 data[0]
-            print2(1, data, length);
+            print2(fd_write, data, 0, length + 1);
         }
     }
     free(data);
