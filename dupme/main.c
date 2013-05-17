@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef enum {
     NORMAL, IGNORING
@@ -65,9 +66,8 @@ int main(int argc, char** argv) {
             last_state = IGNORING;
             length = 0;
         }
-        if (length > 0 && end_of_file
-                && last_state != IGNORING && data[0] != delimiter) {
-            data[length] = delimiter; //??64 data[0]
+        if (end_of_file && last_state != IGNORING && length) {
+            data[length] = delimiter; //it's ok, because length < k, always
             print2(fd_write, data, 0, length + 1);
         }
     }

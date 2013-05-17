@@ -1,4 +1,4 @@
 all: main.c
-	gcc -g -Wall -Wextra -Werror main.c -o main
+	gcc -Wall -Wextra -Werror main.c -o main
 clean:
 	rm -rf *.o main
