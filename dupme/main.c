@@ -1,15 +1,6 @@
 #include <unistd.h>
 #include <stdlib.h>
-
-int str2int(char *source) { 
-    int result = 0;
-    while (*source != 0) {
-        if ((result > (2147483647 - 9) / 10) || *source < '0' || *source > '9') exit(1);
-        result = 10 * result + (*source - '0');
-        source++;
-    }
-    return result;
-}
+#include <string.h>
 
 char *data;
 
@@ -27,9 +18,12 @@ enum state {
 } last_case = NORMAL;
 
 int main(int argc, char** argv) {
-    if (argc != 2) exit(1);
-    int k = str2int(argv[1]);
-    data = malloc(++k * sizeof(char));
+    if (argc != 2)
+        exit(1);
+    int k = atoi(argv[1]) + 1;
+    if (k == 1)
+        exit(2);
+    data = malloc(k * sizeof(char));
     int length = 0, read_count = 0, end_of_file = 0, i = 0;
     while (end_of_file == 0) {
         read_count = read(0, data + length, k - length);
