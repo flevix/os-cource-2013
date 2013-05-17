@@ -6,10 +6,11 @@ typedef enum {
     NORMAL, IGNORING
 } state;
 
-void print2(int fd, char *buf, int length) {
+void print2(int fd, char *buf, int _length) {
     int i;
     for (i = 0; i < 2; i++) {
         int write_count = 0;
+        int length = _length;
         while (length > 0) {
             write_count = write(fd, buf + write_count, length + 1);
             if (write_count < 0)
@@ -49,8 +50,7 @@ int main(int argc, char** argv) {
             if (data[i] == delimiter) {
                 if (last_state == IGNORING) {
                     last_state = NORMAL;
-                } else if (last_state == NORMAL && i < k
-                                && data[0] != delimiter) { //??54
+                } else if (data[0] != delimiter) { //??54
                     print2(fd_write, data, i);
                 }
                 //i think it's need rewrite
