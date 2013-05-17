@@ -24,7 +24,10 @@ int main(int argc, char** argv) {
     if (k == 1)
         exit(2);
     data = malloc(k * sizeof(char));
-    int length = 0, read_count = 0, end_of_file = 0, i = 0;
+    int length = 0;
+    int read_count = 0;
+    int end_of_file = 0;
+    int i = 0;
     state last_state = NORMAL;
     while (end_of_file == 0) {
         read_count = read(0, data + length, k - length);
@@ -33,8 +36,12 @@ int main(int argc, char** argv) {
         length += read_count;
         for (i = 0; i < length; i++)
             if (data[i] == '\n') {
-                if (last_state == IGNORING) last_state = NORMAL;
-                else if (last_state == NORMAL && i < k && data[0] != '\n') { print(i); print(i); }
+                if (last_state == IGNORING) {
+                    last_state = NORMAL;
+                } else if (last_state == NORMAL && i < k && data[0] != '\n') {
+                    print(i);
+                    print(i);
+                }
                 memmove(data, data + i + 1, k - i - 1);
                 length -= i + 1;
                 i = 0;
