@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <string.h>
 
+#include <stdio.h>
+
 void print(int fd, char* buf, int length) {
     int count = 0;
     while (count < length) {
@@ -57,13 +59,10 @@ int main(int argc, char** argv) {
         }
     }
     k += 1;
+
     int len = argc - optind + 2;
     char** _argv = (char**) malloc(len * sizeof(char));
-
-    int i;
-    for (i = 0; i < len - 2; i++) {
-        _argv[i] = argv[i + optind];
-    }
+    memcpy(_argv, argv + optind, (len - 2) * sizeof(char*));
     _argv[len - 1] = 0;
     
     char* data = (char*) malloc(k * sizeof(char));

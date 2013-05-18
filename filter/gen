@@ -24,6 +24,6 @@ exit 1 " > "$PREDICAT"
 chmod +x "$PREDICAT"
 
 #find "$DIR" -print0 | ./filter -z -- "$PREDICAT"
-find "$DIR" | ./filter -- "$PREDICAT"
+find "$DIR" | ./filter -nb 1024 -- "$PREDICAT"
 
 rm "$PREDICAT"
