@@ -5,22 +5,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-char *data;
-char **_argv;
-int len = 0;
-char delimiter;
-
-void _free() {
-    free(data);
-    free(_argv);
-}
-
-void error_exit() {
-    _free();
-    exit(1);
-}
-
-void print(int fd, char *buf, int first, int last) {
+void print(int fd, char* buf, int first, int last) {
     while (first < last) {
         int write_count = write(fd, buf + first, last - first + 1);
         if (write_count < 0)
@@ -29,7 +14,7 @@ void print(int fd, char *buf, int first, int last) {
     }
 }
 
-void _exec(int first, int last)
+void _exec(char** _argv, char* data, int first, int last, char delimiter, int len)
 {
     data[last] = 0;
     _argv[len - 2] = data;
@@ -51,9 +36,10 @@ void _exec(int first, int last)
 }
 
 int main(int argc, char** argv) {
-    int k = 4 * 1024;
+
     int opt;
-    delimiter = '\n';
+    int k = 4 * 1024;
+    char delimiter = '\n';
     while ((opt = getopt(argc, argv, "nzb:")) != -1) {
         switch (opt) {
             case 'n':
@@ -64,24 +50,27 @@ int main(int argc, char** argv) {
                 break;
             case 'b':
                 k = atoi(optarg);
-                if (k < 1) error_exit();
+                if (k < 1)
+                   exit(1);
                 break;
         }
     }
-    len = argc - optind + 2;
-    _argv = malloc(len);
+    int len = argc - optind + 2;
+    char **_argv = (char**) malloc(len * sizeof(char));
+
     int i;
     for (i = 0; i < len - 2; i++) {
         _argv[i] = argv[i + optind];
     }
     _argv[len - 1] = 0;
-    data = malloc(++k * sizeof(char));
+    k += 1;
+    char *data = (char*) malloc(k * sizeof(char));
     int length = 0;
     int eof = 0;
     while (!eof) {
         int read_count = read(0, data + length, k - length);
         if (read_count < 0)
-            error_exit(1);
+            exit(2);
         if (read_count == 0)
             eof = 1;
         length += read_count;
@@ -90,7 +79,7 @@ int main(int argc, char** argv) {
         int last;
         for (last = 0; last < length; last++) {
             if (data[last] == delimiter) {
-                _exec(first, last);
+                _exec(_argv, data, first, last, delimiter, len);
                 first = last + 1;
             }
         }
@@ -98,10 +87,11 @@ int main(int argc, char** argv) {
         length -= first;
 
         if (length == k)
-            error_exit();
-        if (eof && length)
-            _exec(0, length);
+            exit(3);
+        if (eof)
+            _exec(_argv, data, 0, length, delimiter, len);
     }
-    _free();
+    free(data);
+    free(_argv);
     return 0;
 }
