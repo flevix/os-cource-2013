@@ -6,17 +6,17 @@ typedef enum {
     NORMAL, IGNORING
 } state;
 
-void print2(int fd, char *buf, int _first, int _last) {
+void print2(int fd, char *buf, int length) {
     int i;
     for (i = 0; i < 2; i++) {
-        int first = _first;
+        int count = 0;
 
-        while (first < _last) {
-            int write_count = write(fd, buf + first, _last - first + 1);
+        while (count < length) {
+            int write_count = write(fd, buf + count, length - count + 1);
             if (write_count < 0) {
                 exit(4);
             }
-            first += write_count;
+            count += write_count;
         }
     }
 }
@@ -32,8 +32,8 @@ int main(int argc, char** argv) {
 
     char *data = (char*) malloc(k * sizeof(char));
     const char delimiter = '\n';
-    const int fd_read = 0;
-    const int fd_write = 1;
+    const int fd_read = STDIN_FILENO;
+    const int fd_write = STDOUT_FILENO;
 
     state last_state = NORMAL;
     int length = 0;
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
                 if (last_state == IGNORING) {
                     last_state = NORMAL;
                 }
-                print2(fd_write, data, first, last);
+                print2(fd_write, data + first, last - first);
                 first = last + 1;
             }
         }
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
         }
         if (eof && last_state != IGNORING) {
             data[length] = delimiter; //it's ok, because length < k, always
-            print2(fd_write, data, 0, length);
+            print2(fd_write, data, length);
         }
     }
     free(data);
