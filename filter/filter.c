@@ -5,8 +5,6 @@
 #include <fcntl.h>
 #include <string.h>
 
-#include <stdio.h>
-
 void print(int fd, char* buf, int length) {
     int count = 0;
     while (count < length) {
@@ -17,10 +15,10 @@ void print(int fd, char* buf, int length) {
     }
 }
 
-void _exec(char** _argv, char* data, int length, char delimiter, int len)
+void _exec(char** _argv, int len, char* data, int length, char delimiter)
 {
     data[length] = '\0';
-    _argv[len - 2] = data; //??
+    _argv[len - 2] = data; //pre last argv
     if (!fork())
     {
         int fd = open("/dev/null", O_WRONLY);
@@ -41,7 +39,7 @@ void _exec(char** _argv, char* data, int length, char delimiter, int len)
 int main(int argc, char** argv) {
 
     int opt;
-    int k = 4 * 1024;
+    int buf_capacity = 4 * 1024;
     char delimiter = '\n';
     while ((opt = getopt(argc, argv, "nzb:")) != -1) {
         switch (opt) {
@@ -52,45 +50,45 @@ int main(int argc, char** argv) {
                 delimiter = '\0';
                 break;
             case 'b':
-                k = atoi(optarg);
-                if (k < 1)
+                buf_capacity = atoi(optarg);
+                if (buf_capacity < 1)
                    exit(1);
                 break;
         }
     }
-    k += 1;
+    buf_capacity += 1;
 
-    int len = argc - optind + 2;
-    char** _argv = (char**) malloc(len * sizeof(char));
-    memcpy(_argv, argv + optind, (len - 2) * sizeof(char*));
-    _argv[len - 1] = 0;
+    int _argv_length = argc - optind + 2;
+    char** _argv = (char**) malloc(_argv_length * sizeof(char*));
+    memcpy(_argv, argv + optind, (_argv_length - 2) * sizeof(char*));
+    _argv[_argv_length - 1] = NULL; //last argv
     
-    char* data = (char*) malloc(k * sizeof(char));
-    int length = 0;
+    char* data = (char*) malloc(buf_capacity * sizeof(char));
+    int buf_size = 0;
     int eof = 0;
     while (!eof) {
-        int read_count = read(0, data + length, k - length);
+        int read_count = read(0, data + buf_size, buf_capacity - buf_size);
         if (read_count < 0)
             _exit(2);
         if (read_count == 0)
             eof = 1;
-        length += read_count;
+        buf_size += read_count;
         
         int first = 0;
         int last;
-        for (last = 0; last < length; last++) {
+        for (last = 0; last < buf_size; last++) {
             if (data[last] == delimiter) {
-                _exec(_argv, data + first, last - first, delimiter, len);
+                _exec(_argv, _argv_length, data + first, last - first, delimiter);
                 first = last + 1;
             }
         }
-        memmove(data, data + first, (k - first) * sizeof(char));
-        length -= first;
+        memmove(data, data + first, (buf_capacity - first) * sizeof(char));
+        buf_size -= first;
 
-        if (length == k)
+        if (buf_size == buf_capacity)
             _exit(3);
         if (eof)
-            _exec(_argv, data, length, delimiter, len);
+            _exec(_argv, _argv_length, data, buf_size, delimiter);
     }
     free(data);
     free(_argv);
