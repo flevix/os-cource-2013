@@ -6,17 +6,18 @@ typedef enum {
     NORMAL, IGNORING
 } state;
 
-void print2(int fd, char *buf, int _start, int end) {
+void print2(int fd, char *buf, int _first, int _last) {
     int i;
     for (i = 0; i < 2; i++) {
         int write_count = 0;
-        int start = _start;
-        while (start < end) {
-            write_count = write(fd, buf + start, end - start);
+        int first = _first;
+
+        while (first < _last) {
+            write_count = write(fd, buf + first, _last - first + 1);
             if (write_count < 0) {
                 exit(4);
             }
-            start += write_count;
+            first += write_count;
         }
     }
 }
@@ -37,13 +38,13 @@ int main(int argc, char** argv) {
 
     state last_state = NORMAL;
     int length = 0;
-    int end_of_file = 0;
-    while (end_of_file == 0) {
+    int eof = 0;
+    while (!eof) {
         int read_count = read(fd_read, data + length, k - length);
         if (read_count < 0)
             exit(3);
         if (read_count == 0)
-            end_of_file = 1;
+            eof = 1;
         length += read_count;
 
         int first = 0;
@@ -52,9 +53,8 @@ int main(int argc, char** argv) {
             if (data[last] == delimiter) {
                 if (last_state == IGNORING) {
                     last_state = NORMAL;
-                } else if (first != last) {
-                    print2(fd_write, data, first, last + 1);
                 }
+                print2(fd_write, data, first, last);
                 first = last + 1;
             }
         }
@@ -65,9 +65,9 @@ int main(int argc, char** argv) {
             last_state = IGNORING;
             length = 0;
         }
-        if (end_of_file && last_state != IGNORING && length) {
+        if (eof && last_state != IGNORING && length) {
             data[length] = delimiter; //it's ok, because length < k, always
-            print2(fd_write, data, 0, length + 1);
+            print2(fd_write, data, 0, length);
         }
     }
     free(data);
