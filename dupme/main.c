@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
             last_state = IGNORING;
             length = 0;
         }
-        if (eof && last_state != IGNORING && length) {
+        if (eof && last_state != IGNORING) {
             data[length] = delimiter; //it's ok, because length < k, always
             print2(fd_write, data, 0, length);
         }
