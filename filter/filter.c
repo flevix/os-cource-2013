@@ -9,15 +9,15 @@ void print(int fd, char* buf, int first, int last) {
     while (first < last) {
         int write_count = write(fd, buf + first, last - first + 1);
         if (write_count < 0)
-            exit(4);
+            _exit(4);
         first += write_count;
     }
 }
 
 void _exec(char** _argv, char* data, int first, int last, char delimiter, int len)
 {
-    data[last] = 0;
-    _argv[len - 2] = data;
+    data[last] = '\0';
+    _argv[len - 2] = data; //??
     if (!fork())
     {
         int fd = open("/dev/null", O_WRONLY);
@@ -25,13 +25,13 @@ void _exec(char** _argv, char* data, int first, int last, char delimiter, int le
         dup2(fd, 2);
         close(fd);
         execvp(_argv[0], _argv);
-        exit(255); //if execvp don't execute
+        _exit(255); //if execvp don't execute
     }
     int status;
     wait(&status);
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
         data[last] = delimiter;
-        print(1, data, first, last);
+        print(STDOUT_FILENO, data, first, last);
     }
 }
 
@@ -55,22 +55,23 @@ int main(int argc, char** argv) {
                 break;
         }
     }
+    k += 1;
     int len = argc - optind + 2;
-    char **_argv = (char**) malloc(len * sizeof(char));
+    char** _argv = (char**) malloc(len * sizeof(char));
 
     int i;
     for (i = 0; i < len - 2; i++) {
         _argv[i] = argv[i + optind];
     }
     _argv[len - 1] = 0;
-    k += 1;
-    char *data = (char*) malloc(k * sizeof(char));
+    
+    char* data = (char*) malloc(k * sizeof(char));
     int length = 0;
     int eof = 0;
     while (!eof) {
         int read_count = read(0, data + length, k - length);
         if (read_count < 0)
-            exit(2);
+            _exit(2);
         if (read_count == 0)
             eof = 1;
         length += read_count;
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
         length -= first;
 
         if (length == k)
-            exit(3);
+            _exit(3);
         if (eof)
             _exec(_argv, data, 0, length, delimiter, len);
     }
