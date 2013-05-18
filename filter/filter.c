@@ -20,18 +20,18 @@ void error_exit() {
     exit(1);
 }
 
-void print(int length) {
-    int write_count = 0;
-    while (length > 0) {
-        write_count = write(1, data + write_count, length + 1);
-        if (write_count < 0) error_exit();
-        length -= write_count;
+void print(int fd, char *buf, int first, int last) {
+    while (first < last) {
+        int write_count = write(fd, buf + first, last - first + 1);
+        if (write_count < 0)
+            exit(4);
+        first += write_count;
     }
 }
 
-void _exec(int i)
+void _exec(int first, int last)
 {
-    data[i] = 0;
+    data[last] = 0;
     _argv[len - 2] = data;
     if (!fork())
     {
@@ -45,8 +45,8 @@ void _exec(int i)
     int status;
     wait(&status);
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-        data[i] = delimiter;
-        print(i);
+        data[last] = delimiter;
+        print(1, data, first, last);
     }
 }
 
@@ -76,22 +76,31 @@ int main(int argc, char** argv) {
     }
     _argv[len - 1] = 0;
     data = malloc(++k * sizeof(char));
-    int length = 0, read_count = 0, end_of_file = 0;
-    i = 0;
-    while (end_of_file == 0) {
-        read_count = read(0, data + length, k - length);
-        if (read_count < 0) error_exit(1);
-        if (read_count == 0) end_of_file = 1;
+    int length = 0;
+    int eof = 0;
+    while (!eof) {
+        int read_count = read(0, data + length, k - length);
+        if (read_count < 0)
+            error_exit(1);
+        if (read_count == 0)
+            eof = 1;
         length += read_count;
-        for (i = 0; i < length; i++)
-            if (data[i] == delimiter) {
-                if (i < k && data[0] != delimiter) _exec(i);
-                memmove(data, data + i + 1, k - i - 1);
-                length -= i + 1;
-                i = 0;
+        
+        int first = 0;
+        int last;
+        for (last = 0; last < length; last++) {
+            if (data[last] == delimiter) {
+                _exec(first, last);
+                first = last + 1;
             }
-        if (length == k) error_exit();
-        if (end_of_file && data[0] != delimiter) _exec(length);
+        }
+        memmove(data, data + first, (k - first) * sizeof(char));
+        length -= first;
+
+        if (length == k)
+            error_exit();
+        if (eof && length)
+            _exec(0, length);
     }
     _free();
     return 0;
