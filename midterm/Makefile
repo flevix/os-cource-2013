@@ -1,4 +1,4 @@
 all: midterm.c
-	gcc -g midterm.c -o pr
+	gcc -g -Wall -Wextra -Werror midterm.c -o midterm
 clean:
-	rm -rf *.o pr
+	rm -rf *.o midterm
