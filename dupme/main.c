@@ -9,11 +9,10 @@ typedef enum {
 void print2(int fd, char *buf, int _first, int _last) {
     int i;
     for (i = 0; i < 2; i++) {
-        int write_count = 0;
         int first = _first;
 
         while (first < _last) {
-            write_count = write(fd, buf + first, _last - first + 1);
+            int write_count = write(fd, buf + first, _last - first + 1);
             if (write_count < 0) {
                 exit(4);
             }
