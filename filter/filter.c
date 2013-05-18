@@ -5,24 +5,25 @@
 #include <fcntl.h>
 #include <string.h>
 
-void print(int fd, char* buf, int first, int last) {
-    while (first < last) {
-        int write_count = write(fd, buf + first, last - first + 1);
+void print(int fd, char* buf, int length) {
+    int count = 0;
+    while (count < length) {
+        int write_count = write(fd, buf + count, length - count + 1);
         if (write_count < 0)
             _exit(4);
-        first += write_count;
+        count += write_count;
     }
 }
 
-void _exec(char** _argv, char* data, int first, int last, char delimiter, int len)
+void _exec(char** _argv, char* data, int length, char delimiter, int len)
 {
-    data[last] = '\0';
+    data[length] = '\0';
     _argv[len - 2] = data; //??
     if (!fork())
     {
         int fd = open("/dev/null", O_WRONLY);
-        dup2(fd, 1);
-        dup2(fd, 2);
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
         close(fd);
         execvp(_argv[0], _argv);
         _exit(255); //if execvp don't execute
@@ -30,8 +31,8 @@ void _exec(char** _argv, char* data, int first, int last, char delimiter, int le
     int status;
     wait(&status);
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-        data[last] = delimiter;
-        print(STDOUT_FILENO, data, first, last);
+        data[length] = delimiter;
+        print(STDOUT_FILENO, data, length);
     }
 }
 
@@ -80,7 +81,7 @@ int main(int argc, char** argv) {
         int last;
         for (last = 0; last < length; last++) {
             if (data[last] == delimiter) {
-                _exec(_argv, data, first, last, delimiter, len);
+                _exec(_argv, data + first, last - first, delimiter, len);
                 first = last + 1;
             }
         }
@@ -90,7 +91,7 @@ int main(int argc, char** argv) {
         if (length == k)
             _exit(3);
         if (eof)
-            _exec(_argv, data, 0, length, delimiter, len);
+            _exec(_argv, data, length, delimiter, len);
     }
     free(data);
     free(_argv);
