@@ -30,11 +30,10 @@ void _write(int src, int dst) {
         if (read_count == 0)
             break;
         int pos = 0;
-        while (read_count > 0) {
-            int write_count = write(dst, data + pos, read_count);
+        while (pos < read_count) {
+            int write_count = write(dst, data + pos, read_count - pos + 1);
             if (write_count < 0)
                 error_exit(6);
-            read_count -= write_count;
             pos += write_count;
         }
     }
