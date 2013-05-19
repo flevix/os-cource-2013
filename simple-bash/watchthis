@@ -40,4 +40,3 @@ do
     sleep $time_for_wait
 done
 
-#rm -f $STATE_FIRST $STATE_SECOND #redundant line
