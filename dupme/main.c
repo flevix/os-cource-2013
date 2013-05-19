@@ -39,13 +39,13 @@ int main(int argc, char** argv) {
 
     state last_state = NORMAL;
     int length = 0;
-    int eof = 0;
-    while (!eof) {
+    int eof_flag = 0;
+    while (!eof_flag) {
         int read_count = read(fd_read, data + length, k - length);
         if (read_count < 0)
             exit(3);
         if (read_count == 0)
-            eof = 1;
+            eof_flag = 1;
         length += read_count;
 
         int first = 0;
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
             last_state = IGNORING;
             length = 0;
         }
-        if (eof && last_state != IGNORING) {
+        if (eof_flag && last_state != IGNORING) {
             data[length] = delimiter; //it's ok, because length < k, always
             print2(fd_write, data, length);
         }

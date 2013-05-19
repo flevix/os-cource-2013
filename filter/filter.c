@@ -69,13 +69,13 @@ int main(int argc, char** argv) {
     if (data == NULL)
         exit(1);
     int buf_size = 0;
-    int eof = 0;
-    while (!eof) {
+    int eof_flag = 0;
+    while (!eof_flag) {
         int read_count = read(0, data + buf_size, buf_capacity - buf_size);
         if (read_count < 0)
             _exit(2);
         if (read_count == 0)
-            eof = 1;
+            eof_flag = 1;
         buf_size += read_count;
         
         int first = 0;
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 
         if (buf_size == buf_capacity)
             _exit(3);
-        if (eof)
+        if (eof_flag)
             _exec(_argv, _argv_length, data, buf_size, delimiter);
     }
     free(data);
