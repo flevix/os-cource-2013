@@ -20,7 +20,7 @@ i=0
 while [ "$i" -lt "$test_count" ]
 do
     ./gen "$file1" "$file2" "$buf"
-    ./pr "$file1" "$buf" > "$file3"
+    ./midterm "$file1" "$buf" > "$file3"
     if ! diff "$file2" "$file3" 
     then
         echo "test #"$i" failed"
