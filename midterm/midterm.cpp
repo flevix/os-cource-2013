@@ -2,7 +2,6 @@
 #include <fcntl.h> //open, O_RDONLY
 #include <unistd.h> //STDOUT_FILENO, STDERR_FILENO, close, read, write
 #include <string.h> //memchr, memcpy, memmove
-#include <stdio.h> //printf
 
 class STREAM {
 private:
@@ -50,7 +49,17 @@ public:
         free(data);
     }
 };
-
+int _write(int fd, char* buf, int length) {
+    int count = 0;
+    while (count < length) {
+        int write_count = write(fd, buf + count, length - count);
+        if (write_count < 0)
+            return 1;
+        count += write_count;
+    }
+    write(fd, "\n", 1);
+    return 0;
+}
 int main(int argc, char** argv) {
     if (argc != 3)
         exit(1);
@@ -65,7 +74,8 @@ int main(int argc, char** argv) {
 
     char* t;
     while ((t = stream.next_token()) != NULL) {
-        printf("%s\n", t);
+        if (_write(STDOUT_FILENO, t, strlen(t)))
+            exit(7);
         free(t);
     }
     close(fd);
