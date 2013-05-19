@@ -21,7 +21,9 @@ void handler() {
     error_exit(130);
 }
 
-void _rw(char* data, int data_size, int src, int dst) {
+void _rw(int src, int dst) {
+    int data_size = 1024;
+    char* data = (char*) malloc(data_size * sizeof(char));
     while (1) {
         int read_count = read(src, data, data_size);
         if (read_count < 0)
@@ -30,15 +32,16 @@ void _rw(char* data, int data_size, int src, int dst) {
             break;
         int pos = 0;
         while (pos < read_count) {
-            int write_count = write(dst, data + pos, read_count - pos + 1);
+            int write_count = write(dst, data + pos, read_count - pos);
             if (write_count < 0)
                 error_exit(8);
             pos += write_count;
         }
     }
+    free(data);
 }
 
-int check_creat_files(const char* file1, const char* file2) {
+int check_creat_fail(const char* file1, const char* file2) {
     int fds[2];
     fds[0] = open(file1, O_CREAT | O_WRONLY, 0600);
     fds[1] = open(file2, O_CREAT | O_WRONLY | O_TRUNC, 0600);
@@ -49,13 +52,13 @@ int check_creat_files(const char* file1, const char* file2) {
     return 0;
 }
 
-int copy_fail(char* data, int data_size, const char* from, const char* to) {
+int copy_fail(const char* from, const char* to) {
     int fds[2];
     fds[0] = open(from, O_RDONLY);
     fds[1] = open(to, O_WRONLY | O_TRUNC);
     if (fds[0] < 0 || fds[1] < 0)
         return 1;
-    _rw(data, data_size, fds[0], fds[1]);
+    _rw(fds[0], fds[1]);
     close(fds[0]);
     close(fds[1]);
     return 0;
@@ -82,20 +85,19 @@ int main(int argc, char** argv) {
     const char* st1 = STATE_FIRST;
     const char* st2 = STATE_SECOND;
 
-    if (check_creat_files(st1, st2))
+    if (check_creat_fail(st1, st2))
        error_exit(2); 
 
     signal(SIGINT, handler);
-    int data_size = 1024;
-    char* data = (char*) malloc(data_size * sizeof(char));
-    int fd;
+
     while (1) {
+        int fd;
         if (fork()) {
             if (wait_fail())
                 error_exit(3);
             if ((fd = open(st1, O_RDONLY)) < 0)
                 error_exit(4);
-            _rw(data, data_size, fd, STDOUT_FILENO);
+            _rw(fd, STDOUT_FILENO);
             close(fd);
 
             if (fork()) {
@@ -114,7 +116,7 @@ int main(int argc, char** argv) {
             execvp(argv[2], &argv[2]);
             exit(255);
         }
-        if (copy_fail(data, data_size, st1, st2))
+        if (copy_fail(st1, st2))
             error_exit(6);
         sleep(time_for_wait);
     }
