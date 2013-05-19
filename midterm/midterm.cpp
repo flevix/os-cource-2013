@@ -5,14 +5,14 @@
 #include <stdio.h> //printf
 
 class STREAM {
-public:
+private:
     int fd;
     int capacity;
     int size;
     int close;
     char delimiter;
     char* data;
-    
+public:    
     STREAM(int fd, int capacity, char delimiter) :
         fd(fd), capacity(capacity), size(0), close(0), delimiter(delimiter),
         data( (char*) malloc(capacity * sizeof(char)))
@@ -21,8 +21,7 @@ public:
     char* next_token() {
         char* pos = (char*) memchr(data, delimiter, size);
         while (pos == NULL && (!close)) {
-            int read_count = read(fd, data + size,
-                                    capacity - size);
+            int read_count = read(fd, data + size, capacity - size);
             if (read_count < 0)
                 exit(3);
             size += read_count;
@@ -40,10 +39,9 @@ public:
         if (token == NULL)
             exit(5);
 
-        memcpy(token, data, token_size * sizeof(char));
+        memcpy(token, data, (token_size - 1) * sizeof(char));
         token[token_size - 1] = '\0';
-        memmove(data, data + token_size,
-                    (size - token_size) * sizeof(char));
+        memmove(data, data + token_size, (size - token_size) * sizeof(char));
         size -= token_size;
         return token;
     }
@@ -52,9 +50,6 @@ public:
         free(data);
     }
 };
-
-//char* next_token(STREAM &stream) {
-//}
 
 int main(int argc, char** argv) {
     if (argc != 3)
@@ -67,11 +62,12 @@ int main(int argc, char** argv) {
         exit(3);
 
     STREAM stream(fd, buf_capacity, '\n');
+
     char* t;
-//    while ((t = next_token(stream)) != NULL) {
     while ((t = stream.next_token()) != NULL) {
         printf("%s\n", t);
         free(t);
     }
+    close(fd);
     return 0;
 }
