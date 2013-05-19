@@ -51,13 +51,13 @@ public:
 };
 int _write(int fd, char* buf, int length) {
     int count = 0;
+    buf[length] = '\n'; //replace '\0' -> '\n'
     while (count < length) {
-        int write_count = write(fd, buf + count, length - count);
+        int write_count = write(fd, buf + count, length - count + 1);
         if (write_count < 0)
             return 1;
         count += write_count;
     }
-    write(fd, "\n", 1);
     return 0;
 }
 int main(int argc, char** argv) {

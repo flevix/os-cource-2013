@@ -30,4 +30,4 @@ do
     fi
     let "i += 1"
 done
-rm -f "$file1" "$file2"
+rm -f "$file1" "$file2" "$file3"
