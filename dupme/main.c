@@ -31,6 +31,8 @@ int main(int argc, char** argv) {
     k += 1;
 
     char *data = (char*) malloc(k * sizeof(char));
+    if (data == NULL)
+        exit(1);
     const char delimiter = '\n';
     const int fd_read = STDIN_FILENO;
     const int fd_write = STDOUT_FILENO;

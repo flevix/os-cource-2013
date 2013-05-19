@@ -24,6 +24,8 @@ void handler() {
 void _rw(int src, int dst) {
     int data_size = 1024;
     char* data = (char*) malloc(data_size * sizeof(char));
+    if (data == NULL)
+        error_exit(1);
     while (1) {
         int read_count = read(src, data, data_size);
         if (read_count < 0)

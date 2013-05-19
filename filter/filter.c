@@ -60,10 +60,14 @@ int main(int argc, char** argv) {
 
     int _argv_length = argc - optind + 2;
     char** _argv = (char**) malloc(_argv_length * sizeof(char*));
+    if (_argv == NULL)
+        exit(1);
     memcpy(_argv, argv + optind, (_argv_length - 2) * sizeof(char*));
     _argv[_argv_length - 1] = NULL; //last argv
     
     char* data = (char*) malloc(buf_capacity * sizeof(char));
+    if (data == NULL)
+        exit(1);
     int buf_size = 0;
     int eof = 0;
     while (!eof) {
