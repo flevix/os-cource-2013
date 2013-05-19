@@ -66,30 +66,31 @@ std::deque<char*> next_list(STREAM &stream) {
 }
 
 
-void start(std::deque<char*> list, std::vector<int> pids) {
+pid_t start(std::deque<char*> list) {
     pid_t pid = fork();
-    if (pid) {
-        pids.push_back(pid);
-    } else {
+
+    if (!pid) {
         int fd[2];
         fd[0] = open(list[0], O_RDONLY);
         fd[1] = open(list.back(), O_CREAT | O_TRUNC | O_WRONLY, 0600);
-        if (fd[0] < 0 || fd[1] < 0) exit(13);
+        if (fd[0] < 0 || fd[1] < 0)
+            exit(13);
         dup2(fd[0], 0);
         dup2(fd[1], 1);
         close(fd[0]);
         close(fd[1]);
-        list.pop_front();
-        list.pop_back();
+        char** com = (char**) malloc(list.size() - 1);
+        if (com == NULL)
+            exit(1);
         size_t i;
-        char** com = (char**) malloc(list.size() + 1);
-        for (i = 0; i < list.size(); i++) {
-            com[i] = list[i];
+        for (i = 0; i < list.size() - 2; i++) {
+            com[i] = list[i + 1];
         }
         com[list.size()] = NULL;
         execvp(com[0], com);
         exit(255);
     }
+    return pid;
 }
 
 void good_free(std::deque< std::deque<char*> > lists) {
@@ -110,21 +111,22 @@ int main(int argc, char** argv) {
         exit(2);
 
     STREAM stream(fd);
-    std::vector<int> pids;
     std::deque<char*> list;
     std::deque< std::deque<char*> > lists;
 
     while (1) {
         list = next_list(stream);
-        if (list.size() == 0) break;
+        if (list.size() == 0)
+            break;
         lists.push_back(list);
     }
+    std::vector<int> pids;
     size_t i;
     for (i = 0; i < lists.size(); i++) {
-        start(lists[i], pids);
+        pids.push_back(start(lists[i]));
     }
-    int status;
     for (i = 0; i < pids.size(); i++) {
+        int status;
         waitpid(pids[i], &status, 0);
     }
     good_free(lists);
