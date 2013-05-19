@@ -8,57 +8,55 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-typedef struct {
+class STREAM {
+private:
     int fd;
     int capacity;
     int size;
     int close;
     char delimiter;
     char* data;
-} Stream;
-
-Stream* init_stream(int fd) {
-    Stream *t = (Stream*) malloc(sizeof(Stream));
-    if (t == NULL) exit(4);
-    t->fd = fd;
-    t->capacity = 1024;
-    t->size = 0;
-    t->close = 0;
-    t->delimiter = '\0';
-    t->data = (char*) malloc(t->capacity);
-    if (t->data == NULL) exit(5);
-    return t;
-}
-
-
-char* next_token(Stream* stream) {
-    char* pos = (char*) memchr(stream->data, stream->delimiter, stream->size);
-    int read_count;
-    while (pos == NULL && (!stream->close)) {
-        read_count = read(stream->fd, stream->data + stream->size, 
-            stream->capacity - stream->size);
-        if (read_count < 0) exit(6);
-        stream->size += read_count;
-        if (read_count == 0) stream->close = 1;
-        pos = (char*) memchr(stream->data, stream->delimiter, stream->size);
+public:
+    STREAM(int fd) :
+        fd(fd), capacity(1024), size(0), close(0), delimiter('\0'),
+        data( (char*) malloc(capacity * sizeof(char)))
+    {}
+    
+    char* next_token() {
+        char* pos = (char*) memchr(data, delimiter, size);
+        while (pos == NULL && (!close)) {
+            int read_count = read(fd, data + size, capacity - size);
+            if (read_count < 0)
+                exit(6);
+            size += read_count;
+            if (read_count == 0)
+                close = 1;
+            pos = (char*) memchr(data, delimiter, size);
+        }
+        if (pos == NULL) {
+            if (size == capacity)
+                exit(7);
+            return NULL;
+        }
+        int token_size = pos - data + 1;
+        char* token = (char*) malloc(token_size);
+        if (token == NULL)
+            exit(8);
+        memcpy(token, data, token_size * sizeof(char));
+        memmove(data, data + token_size, (size - token_size) * sizeof(char));
+        size -= token_size;
+        return token;
     }
-    if (pos == NULL) {
-        if (stream->size == stream->capacity) exit(7);
-        return NULL;
-    }
-    int token_size = pos - stream->data + 1;
-    char* token = (char*) malloc(token_size);
-    if (token == NULL) exit(8);
-    memcpy(token, stream->data, token_size);
-    memmove(stream->data, stream->data + token_size, stream->size - token_size);
-    stream->size -= token_size;
-    return token;
-}
 
-std::deque<char*> next_list(Stream* stream) {
+    ~STREAM() {
+        free(data);
+    }
+};
+
+std::deque<char*> next_list(STREAM &stream) {
     char *t;
     std::deque<char*> list;
-    while (((t = next_token(stream)) != NULL) && (strcmp(t, "\0") != 0)) {
+    while (((t = stream.next_token()) != NULL) && (strcmp(t, "\0") != 0)) {
         list.push_back(t);
     }
     if (list.size() < 3) {
@@ -66,6 +64,7 @@ std::deque<char*> next_list(Stream* stream) {
     }
     return list;
 }
+
 
 void start(std::deque<char*> list, std::vector<int> pids) {
     pid_t pid = fork();
@@ -93,7 +92,7 @@ void start(std::deque<char*> list, std::vector<int> pids) {
     }
 }
 
-void good_free(Stream* stream, std::deque< std::deque<char*> > lists) {
+void good_free(std::deque< std::deque<char*> > lists) {
     size_t i, j;
     std::deque<char*> list;
     for (i = 0; i < lists.size(); i++) {
@@ -102,20 +101,19 @@ void good_free(Stream* stream, std::deque< std::deque<char*> > lists) {
             free(list[j]);
         }
     }
-    free(stream->data);
-    free(stream);
 }
 int main(int argc, char** argv) {
-    if (argc != 2) exit(1);
-    int fds = open(argv[1], O_RDONLY);
-    if (fds < 0) exit(2);
+    if (argc != 2)
+        exit(1);
+    int fd = open(argv[1], O_RDONLY);
+    if (fd < 0)
+        exit(2);
 
-    Stream* stream;
+    STREAM stream(fd);
     std::vector<int> pids;
     std::deque<char*> list;
     std::deque< std::deque<char*> > lists;
 
-    stream = init_stream(fds);
     while (1) {
         list = next_list(stream);
         if (list.size() == 0) break;
@@ -129,6 +127,6 @@ int main(int argc, char** argv) {
     for (i = 0; i < pids.size(); i++) {
         waitpid(pids[i], &status, 0);
     }
-    good_free(stream, lists);
+    good_free(lists);
     return 0;
 }
