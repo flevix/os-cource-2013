@@ -15,7 +15,10 @@ public:
     STREAM(int fd, int capacity, char delimiter) :
         fd(fd), capacity(capacity), size(0), close(0), delimiter(delimiter),
         data( (char*) malloc(capacity * sizeof(char)))
-    {}
+    {
+        if (data == NULL)
+            exit(6);
+    }
 
     char* next_token() {
         char* pos = (char*) memchr(data, delimiter, size);

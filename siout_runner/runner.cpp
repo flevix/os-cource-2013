@@ -20,7 +20,10 @@ public:
     STREAM(int fd) :
         fd(fd), capacity(1024), size(0), close(0), delimiter('\0'),
         data( (char*) malloc(capacity * sizeof(char)))
-    {}
+    {
+        if (data == NULL)
+            exit(9);
+    }
     
     char* next_token() {
         char* pos = (char*) memchr(data, delimiter, size);
@@ -129,6 +132,7 @@ int main(int argc, char** argv) {
         int status;
         waitpid(pids[i], &status, 0);
     }
+    close(fd);
     good_free(lists);
     return 0;
 }
