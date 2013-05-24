@@ -10,12 +10,26 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+void _write(int fd, char * buf, int length) {
+    int pos = 0;
+    while (pos < length) {
+        int write_count  = write(fd, buf, length - pos);
+        if (write_count < 0)
+            return;
+        pos += write_count;
+    }
+}
+
 int main() {
-    if (fork()) {
+    pid_t pid = fork();
+    if (pid) {
         int status;
-        wait(&status);
+        waitpid(pid, &status, 0);
         return 0;
     } else {
+        close(0);
+        close(1);
+        close(2);
         setsid();
         addrinfo hints;
         addrinfo* result;
@@ -36,82 +50,73 @@ int main() {
 
         sfd = socket(result->ai_family, result->ai_socktype,
                         result->ai_protocol);
-        if (sfd < 0)
+        if (sfd == -1)
             exit(3);
         
         int sso_status = 1;;
         if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &sso_status, sizeof(int)) != 0)
             exit(4);
 
-        if (bind(sfd, result->ai_addr, result->ai_addrlen) < 0)
+        if (bind(sfd, result->ai_addr, result->ai_addrlen))
             exit(5);
 
-        freeaddrinfo(result);
+        //freeaddrinfo(result);
         
-        if (listen(sfd, 5) != 0)
+        if (listen(sfd, 5))
             exit(6);
 
-        sockaddr_storage sdt_stor; socklen_t sdt_stor_len = sizeof(sdt_stor);
         while (1) {
-
-            int fd = accept(sfd, (sockaddr *) &sdt_stor, &sdt_stor_len);
+            int fd = accept(sfd, result->ai_addr, &result->ai_addrlen);
             if (fd < 0)
                 exit(7);
 
             if (fork()) {
                 close(fd);
             } else {
-                printf("I'm work\n");
+                //printf("I'm work\n");
                 int master, slave;
-                char buf[1024];
-                if (openpty(&master, &slave, buf, NULL, NULL) != 0)
+                char buf[4096];
+                if (openpty(&master, &slave, buf, NULL, NULL) < 0)
                     exit(8);
 
                 if (fork()) {
                     close(slave);
-                    fcntl(sfd, F_SETFL, fcntl(sfd, F_GETFL) | O_NONBLOCK);
-                    fcntl(master, F_SETFL, fcntl(master, F_GETFL) | O_NONBLOCK);
-                    char buff[1024];
+                    fcntl(fd, F_SETFL, O_NONBLOCK);
+                    fcntl(master, F_SETFL, O_NONBLOCK);
+                    int len = 1024;
+                    char* buff = (char*) malloc(len);
                     while (true) {
-                        int read_count = read(sfd, buff, 1024);
-                        if (read_count < 0)
-                            exit(10);
+                        int read_count = read(master, buff, len);
                         if (read_count == 0)
                             break;
-                        int write_count = write(master, buff, read_count);
-                        if (write_count < 0)
-                            exit(10);
-                        if (write_count == 0)
-                            break;
-                        read_count = read(master, buff, 1024);
-                        if (read_count < 0)
-                            exit(10);
+                        _write(fd, buff, read_count);
+
+                        read_count = read(fd, buff, len);
                         if (read_count == 0)
                             break;
-                        write_count = write(sfd, buff, read_count);
-                        if (write_count < 0)
-                            exit(10);
-                        if (write_count == 0)
-                            break;
-                        sleep(5);
+                        _write(master, buff, read_count);
+                        sleep(1);
                     }
+                    free(buff);
                     close(master);
-                    close(sfd);
+                    close(fd);
                 } else {
                     close(master);
-                    close(sfd);
+                    close(fd);
                     setsid();
                     int ff = open(buf, O_RDWR);
+                    if (ff < 0)
+                        exit(11);
                     close(ff);
                     dup2(slave, 0);
                     dup2(slave, 1);
                     dup2(slave, 2);
                     close(slave);
                     execl("/bin/bash", "bash", NULL);
+                    exit(12);
                 }
             }
         }
-        return 0;
     }
 }
 
