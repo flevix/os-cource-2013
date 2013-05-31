@@ -22,17 +22,22 @@ void _write(int fd, char * buf, int length) {
 }
 
 pid_t pid;
+pid_t pidh;
 
-void handler(int) {
+void sigint_handler(int) {
     //for kill child process when ^C pressed
     kill(pid, SIGINT);
+}
+
+void sighup_handler(int) {
+    kill(pidh, SIGHUP);
 }
 
 int main() {
     pid = fork();
     if (pid) {
         //parent
-        signal(SIGINT, handler);
+        signal(SIGINT, sigint_handler);
         std::cout << "Daemon started with pid " << pid << std::endl; 
         int status;
         waitpid(pid, &status, 0);
@@ -60,10 +65,10 @@ int main() {
     //given node and service, which identify an Internet host
     //and a service. -> result
     if (getaddrinfo(NULL, "8822", &hints, &result) != 0) {
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (result == NULL) {
-        exit(2);
+        exit(EXIT_FAILURE);
     }
     
     //create an endpoint for communication
@@ -71,7 +76,7 @@ int main() {
     socket_fd = socket(result->ai_family, result->ai_socktype,
                     result->ai_protocol);
     if (socket_fd == -1) {
-        exit(3);
+        exit(EXIT_FAILURE);
     }
     //set the socket options
     //level == SOL_SOCKET for set socket option
@@ -79,16 +84,16 @@ int main() {
     int sso_status = 1;;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR,
                 &sso_status, sizeof(int)) == -1) {
-        exit(4);
+        exit(EXIT_FAILURE);
     }
     //bind a name to socket
     if (bind(socket_fd, result->ai_addr, result->ai_addrlen) == -1) {
-        exit(5);
+        exit(EXIT_FAILURE);
     }
     //listen for socket connection and limit the queue of
     //incoming connections
     if (listen(socket_fd, 5) == -1) {
-        exit(6);
+        exit(EXIT_FAILURE);
     }
     //waiting connections
     while (1) {
@@ -97,55 +102,84 @@ int main() {
         //return a non-negative file descriptor of the accepted socket
         int fd = accept(socket_fd, result->ai_addr, &result->ai_addrlen);
         if (fd == -1) {
-            exit(7);
+            exit(EXIT_FAILURE);
         }
 
-        if (fork()) {
+        //???
+        pidh = fork();
+        if (pidh) {
+            signal(SIGHUP, sighup_handler);
             //parent
             close(fd);
             continue;
         }
         //child
         //
-        int master, slave;
-        char buf[4096];
-        if (openpty(&master, &slave, buf, NULL, NULL) < 0)
-            exit(8);
-
+        //pty is a pair of virtual character devices that provide
+        //a bidirectional communocation channel
+        //
+        //one end of the channel is called the master
+        //the other end is called the slave
+        //
+        //slave provides an interface that behaves exactly like
+        //a classical terminal
+        int amaster, aslave;
+        //filename of the slave is returned in name
+        char name[4096];
+        //finds an available pseudoterminal and return file descriptors
+        //for the amaster and aslave
+        if (openpty(&amaster, &aslave, name, NULL, NULL) == -1) {
+            exit(EXIT_FAILURE);
+        }
+        
         if (fork()) {
-            close(slave);
+            close(aslave);
             fcntl(fd, F_SETFL, O_NONBLOCK);
-            fcntl(master, F_SETFL, O_NONBLOCK);
-            const int len = 1024;
-            char buff[len];
+            fcntl(amaster, F_SETFL, O_NONBLOCK);
+            const int buf_len = 1024;
+            char buf[buf_len];
             while (true) {
-                int read_count = read(master, buff, len);
-                if (read_count == 0)
-                    break;
-                _write(fd, buff, read_count);
+                //true order???
+                //
+                //int read_count = read(amaster, buf, buf_len);
+                //if (read_count == 0)
+                //    break;
+                //_write(fd, buf, read_count);
 
-                read_count = read(fd, buff, len);
+                //read_count = read(fd, buf, buf_len);
+                //if (read_count == 0)
+                //    break;
+                //_write(amaster, buf, read_count);
+                //
+                int read_count = read(fd, buf, buf_len);
                 if (read_count == 0)
                     break;
-                _write(master, buff, read_count);
+                _write(amaster, buf, read_count);
+
+                read_count = read(amaster, buf, buf_len);
+                if (read_count == 0)
+                    break;
+                _write(fd, buf, read_count);
                 sleep(1);
             }
-            close(master);
+            close(amaster);
             close(fd);
         } else {
-            close(master);
+            close(amaster);
             close(fd);
+            //do daemon
             setsid();
-            int ff = open(buf, O_RDWR);
-            if (ff < 0)
-                exit(11);
-            close(ff);
-            dup2(slave, 0);
-            dup2(slave, 1);
-            dup2(slave, 2);
-            close(slave);
-            execl("/bin/bash", "bash", NULL);
-            exit(12);
+            int slave_fd = open(name, O_RDWR);
+            if (slave_fd < 0) {
+                exit(EXIT_FAILURE);
+            }
+            close(slave_fd);
+            dup2(aslave, 0);
+            dup2(aslave, 1);
+            dup2(aslave, 2);
+            close(aslave);
+            execl("/bin/sh", "sh", NULL);
+            exit(EXIT_FAILURE);
         }
     }
 }
