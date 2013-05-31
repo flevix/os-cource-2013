@@ -22,15 +22,10 @@ void _write(int fd, char * buf, int length) {
 }
 
 pid_t pid;
-pid_t pidh;
 
 void sigint_handler(int) {
     //for kill child process when ^C pressed
     kill(pid, SIGINT);
-}
-
-void sighup_handler(int) {
-    kill(pidh, SIGHUP);
 }
 
 int main() {
@@ -106,9 +101,7 @@ int main() {
         }
 
         //???
-        pidh = fork();
-        if (pidh) {
-            signal(SIGHUP, sighup_handler);
+        if (fork()) {
             //parent
             close(fd);
             continue;
@@ -139,18 +132,6 @@ int main() {
             const int buf_len = 1024;
             char buf[buf_len];
             while (true) {
-                //true order???
-                //
-                //int read_count = read(amaster, buf, buf_len);
-                //if (read_count == 0)
-                //    break;
-                //_write(fd, buf, read_count);
-
-                //read_count = read(fd, buf, buf_len);
-                //if (read_count == 0)
-                //    break;
-                //_write(amaster, buf, read_count);
-                //
                 int read_count = read(fd, buf, buf_len);
                 if (read_count == 0)
                     break;
@@ -167,7 +148,7 @@ int main() {
         } else {
             close(amaster);
             close(fd);
-            //do daemon
+            //make daemon
             setsid();
             int slave_fd = open(name, O_RDWR);
             if (slave_fd < 0) {
@@ -186,3 +167,4 @@ int main() {
 
 
 //socket, setsockopt, bind, listen, accept, port == "8822"
+//tty daemon st find ?
