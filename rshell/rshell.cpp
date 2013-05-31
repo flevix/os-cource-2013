@@ -10,6 +10,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <iostream>
+#include <stropts.h>
+#include <poll.h>
+#include <errno.h>
 
 void _write(int fd, char * buf, int length) {
     int pos = 0;
@@ -39,14 +42,11 @@ int main() {
         return 0;
     }
     //child
+    //daemon
     //
     //create session and set process group ID
     //if error then process is a process group leader
     setsid();
-    //close all child file descritors
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
 
     addrinfo hints;
     addrinfo* result;
@@ -92,6 +92,8 @@ int main() {
     }
     //waiting connections
     while (1) {
+        //proxy
+        //
         //accept a new connection on a socket
         //socket_fd remains open and can accept more connections
         //return a non-negative file descriptor of the accepted socket
@@ -129,23 +131,68 @@ int main() {
             close(aslave);
             fcntl(fd, F_SETFL, O_NONBLOCK);
             fcntl(amaster, F_SETFL, O_NONBLOCK);
-            const int buf_len = 1024;
-            char buf[buf_len];
-            while (true) {
-                int read_count = read(fd, buf, buf_len);
-                if (read_count == 0)
-                    break;
-                _write(amaster, buf, read_count);
+            const int buf_len = 1024 * 8;
+            //char buf[buf_len];
 
-                read_count = read(amaster, buf, buf_len);
-                if (read_count == 0)
-                    break;
-                _write(fd, buf, read_count);
-                sleep(1);
+            pollfd fds[2];
+            int bad_flags = POLLERR | POLLHUP | POLLNVAL;
+            fds[0].fd = amaster;
+            fds[0].events = POLLIN | bad_flags;
+            fds[1].fd = fd;
+            fds[1].events = POLLIN | bad_flags;
+            char pre_buf[2][buf_len];
+            int count[2];
+            count[0] = count[1] = 0;
+            int timeout_msecs = -1;
+            while (true) {
+                int ret = poll(fds, 2, timeout_msecs);
+                if (ret == -1) {
+                    if (errno == EINTR) {
+                        continue;
+                    } else {
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                for (int i = 0; i < 2; i++) {
+                    if (fds[i].revents & POLLIN) {
+                        if (count[i] == 0) {
+                            count[i] = read(fds[i].fd, pre_buf[i], buf_len);
+                            if (count[i] == 0) {
+                                exit(1);
+                            } else if (count[i] == -1) {
+                                if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                                    exit(EXIT_FAILURE);
+                                }
+                            }
+                        }
+                        fds[i ^ 1].revents |= POLLOUT;
+                    }
+                    int j = i ^ 1;
+                    if (fds[j].revents & POLLOUT) {
+                        if (count[i] > 0) {
+                            _write(fds[j].fd, pre_buf[i], count[i]); 
+                        }
+                        count[i] = 0;
+                        fds[j].revents ^= POLLIN;
+                    }
+                    if (fds[i].revents & bad_flags) {
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                //int read_count = read(fd, buf, buf_len);
+                //if (read_count == 0)
+                //    break;
+                //_write(amaster, buf, read_count);
+
+                //read_count = read(amaster, buf, buf_len);
+                //if (read_count == 0)
+                //    break;
+                //_write(fd, buf, read_count);
             }
             close(amaster);
             close(fd);
         } else {
+            //session
             close(amaster);
             close(fd);
             //make daemon
@@ -167,4 +214,4 @@ int main() {
 
 
 //socket, setsockopt, bind, listen, accept, port == "8822"
-//tty daemon st find ?
+//tty demystified st find ?
