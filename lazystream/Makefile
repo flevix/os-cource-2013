@@ -1,18 +1,16 @@
 CC=g++
-CFLAGS=-Wall -Wextra -Werror -std=c++11 -c
+CFLAGS=-Wall -Wextra -Werror -std=c++11 -g -c
+SOURCES=myvector.cpp lazystream.cpp main.cpp
+OBJECTS=$(SOURCES:.cpp=.o)
+EXECUTABLE=run
 
-all: main stream
-	$(CC) myvector.o lazystream.o main.o -o run
-	rm -f *.o
+all: $(SOURCES) $(EXECUTABLE)
 
-main: main.cpp
-	$(CC) $(CFLAGS) main.cpp
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(OBJECTS) -o $@
 
-stream: lazystream.cpp vector
-	$(CC) $(CFLAGS) lazystream.cpp
-	
-vector: myvector.cpp
-	$(CC) $(CFLAGS) myvector.cpp
+.cpp.o:
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm -f run
+	rm -f $(OBJECTS) $(EXECUTABLE)
