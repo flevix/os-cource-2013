@@ -9,7 +9,7 @@ int safe_open(const char *path, int oflag);
 int main() {
     int fd = safe_open("input", O_RDONLY);
     lazy_stream stream(fd, 1024, '\n');
-    while(!stream.is_eof())
+    for(int i = 0; i < 10; i++)
     {
         std::cout << stream.next_token();
     }
