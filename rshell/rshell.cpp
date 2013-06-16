@@ -31,6 +31,12 @@ void sigint_handler(int) {
     kill(pid, SIGINT);
 }
 
+void good_exit(int fd1, int fd2) {
+    close(fd1);
+    close(fd2);
+    exit(EXIT_FAILURE);
+}
+
 int main() {
     pid = fork();
     if (pid) {
@@ -102,7 +108,6 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        //???
         if (fork()) {
             //parent
             close(fd);
@@ -129,65 +134,74 @@ int main() {
         
         if (fork()) {
             close(aslave);
-            fcntl(fd, F_SETFL, O_NONBLOCK);
-            fcntl(amaster, F_SETFL, O_NONBLOCK);
-            const int buf_len = 1024 * 8;
-            //char buf[buf_len];
-
-            pollfd fds[2];
             int bad_flags = POLLERR | POLLHUP | POLLNVAL;
+            pollfd fds[2];
             fds[0].fd = amaster;
             fds[0].events = POLLIN | bad_flags;
             fds[1].fd = fd;
             fds[1].events = POLLIN | bad_flags;
-            char pre_buf[2][buf_len];
+            const int buf_len = 1024 * 8;
+            char bufs[2][buf_len];
             int count[2];
             count[0] = count[1] = 0;
             int timeout_msecs = -1;
+            int fails = 0;
             while (true) {
                 int ret = poll(fds, 2, timeout_msecs);
                 if (ret == -1) {
                     if (errno == EINTR) {
                         continue;
                     } else {
-                        exit(EXIT_FAILURE);
+                        good_exit(fds[0].fd, fds[1].fd);
                     }
                 }
                 for (int i = 0; i < 2; i++) {
                     if (fds[i].revents & POLLIN) {
-                        if (count[i] == 0) {
-                            count[i] = read(fds[i].fd, pre_buf[i], buf_len);
-                            if (count[i] == 0) {
+                        int read_count = read(fds[i].fd, bufs[i],
+                                    buf_len - count[i]);
+                        if (read_count == 0) {
+                            fails += 1;
+                            //?`
+                            fds[i].events = 0;
+                            close(fds[i].fd);
+                        } else if (count[i] == -1) {
+                            if (errno != EWOULDBLOCK && errno != EAGAIN) {
                                 exit(1);
-                            } else if (count[i] == -1) {
-                                if (errno != EWOULDBLOCK && errno != EAGAIN) {
-                                    exit(EXIT_FAILURE);
-                                }
+                                //continue;
                             }
+                        } else  {
+                            count[i] += read_count;
                         }
-                        fds[i ^ 1].revents |= POLLOUT;
                     }
                     int j = i ^ 1;
                     if (fds[j].revents & POLLOUT) {
-                        if (count[i] > 0) {
-                            _write(fds[j].fd, pre_buf[i], count[i]); 
+                        int write_count = write(fds[j].fd, bufs[i], count[i]); 
+                        if (write_count == -1) {
+                            if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                                exit(1);
+                                //continue;
+                            }
+                        } else {
+                            memmove(bufs[i], bufs[i] + write_count,
+                                        count[i] - write_count);
+                            count[i] -= write_count;
+                            if (count[i] == 0) {
+                                fds[j].events ^= POLLOUT;
+                            }
                         }
-                        count[i] = 0;
-                        fds[j].revents ^= POLLIN;
-                    }
-                    if (fds[i].revents & bad_flags) {
-                        exit(EXIT_FAILURE);
                     }
                 }
-                //int read_count = read(fd, buf, buf_len);
-                //if (read_count == 0)
-                //    break;
-                //_write(amaster, buf, read_count);
-
-                //read_count = read(amaster, buf, buf_len);
-                //if (read_count == 0)
-                //    break;
-                //_write(fd, buf, read_count);
+                if (fails == 2) {
+                    good_exit(fds[0].fd, fds[1].fd);
+                }
+                for (int i = 0; i < 2; i++) {
+                    if (count[i] == 0 && !fds[i].events) {
+                        fds[i].events |= POLLIN;
+                    }
+                    if (count[i] > 0 && !fds[i ^ 1].events) {
+                        fds[i].events |= POLLOUT;
+                    }
+                }
             }
             close(amaster);
             close(fd);
