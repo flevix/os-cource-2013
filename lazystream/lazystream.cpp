@@ -42,11 +42,12 @@ optional lazy_stream::next_token()
     }
     pos += 1;
     int distance = pos - buffer.data();
-    my_vector head(capacity);
-    my_vector tail(capacity);
+
+    my_vector head(distance);
     memcpy(head.data(), buffer.data(), distance);
     head.size = distance;
 
+    my_vector tail(size - distance);
     memcpy(tail.data(), pos, size - distance);
     tail.size = size - distance;
 

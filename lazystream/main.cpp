@@ -10,7 +10,7 @@ int safe_open(const char *path, int oflag);
 
 int main() {
     int fd = safe_open("input", O_RDONLY);
-    lazy_stream stream(fd, 1024, '\n');
+    lazy_stream stream(fd, 1024, ' ');
 
     optional opt(nullptr);
     while(!stream.is_eof())
