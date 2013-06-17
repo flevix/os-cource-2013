@@ -12,6 +12,12 @@
 #include <stropts.h>
 #include <poll.h>
 #include <errno.h>
+#include <chrono>
+#include <ctime>
+
+void safe_write(int fd, char *buf, size_t len);
+char *safe_malloc(size_t size);
+size_t find_pos(char *buf, size_t size, char delimiter);
 
 pid_t pid;
 
@@ -41,7 +47,7 @@ int main()
     hints.ai_protocol = 0;
 
     addrinfo *result;
-    if (getaddrinfo(NULL, "8442", &hints, &result) != 0)
+    if (getaddrinfo(nullptr, "8442", &hints, &result) != 0)
     {
         std::exit(EXIT_FAILURE);
     }
@@ -90,32 +96,84 @@ int main()
             }
             continue;
         }
-        int master, slave;
-        char slave_name[4096];
-        if (openpty(&master, &slave, slave_name, NULL, NULL) == -1)
+        close(socket_fd);
+        fcntl(fd_acc, F_SETFL, O_NONBLOCK);
+
+        char message[] = "Hello\n";
+        size_t message_len = strlen(message);
+
+        //send hello
+        safe_write(fd_acc, message, message_len);
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        const size_t buffer_len = 32;
+        char *buffer = safe_malloc(buffer_len);
+        
+        //receive hello
+        while (strcmp(message, buffer) != 0)
         {
-            std::exit(EXIT_FAILURE);
-        }
-        if (fork())
-        {
-        }
-        else
-        {
-            close(master);
-            close(fd_acc);
-            setsid();
-            int pty_fd = open(slave_name, O_RDWR);
-            if (pty_fd == -1)
+            int read_count = read(fd_acc, buffer, buffer_len);
+            if (read_count == 0)
             {
-                std::exit(EXIT_FAILURE);
+                break;
             }
-            close(pty_fd);
-            dup2(slave, STDIN_FILENO);
-            dup2(slave, STDOUT_FILENO);
-            dup2(slave, STDERR_FILENO);
-            close(slave);
-            //execl("/bin/sh", "sh", NULL);
+            if (strcmp(message, buffer) == 0)
+            {
+                break;
+            }
+        }
+        auto stop = std::chrono::high_resolution_clock::now();
+        //print ping
+        std::cout 
+            << std::chrono::duration<double>(1000 * (stop - start)).count()
+            << std::endl;
+        //time stamp
+        const size_t time_size = 128;
+        std::time_t t = std::time(nullptr);
+        char *tt = safe_malloc(time_size);
+        memset(tt, 0, time_size);
+        std::strftime(tt, time_size, "%A %c \n\0", std::localtime(&t));
+
+        //const size_t size = find_pos(tt, time_size, '\n') + 1;
+        //tt[size + 1] = '\0';
+        safe_write(STDOUT_FILENO, tt, strlen(tt));
+        safe_write(fd_acc, tt, strlen(tt));
+    }
+}
+
+void safe_write(int fd, char *buf, size_t len)
+{
+    size_t write_count = 0;
+    while (write_count < len)
+    {
+        int curr_write = write(fd, buf + write_count, len - write_count);
+        if (curr_write == -1)
+        {
             std::exit(EXIT_FAILURE);
+        }
+        write_count += curr_write;
+    }
+}
+
+char *safe_malloc(size_t size)
+{
+    void *ptr = malloc(size);
+    if (ptr == nullptr)
+    {
+        std::exit(EXIT_FAILURE);
+    }
+    return static_cast<char*>(ptr);
+}
+
+size_t find_pos(char *buf, size_t size, char del)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        if (buf[i] == del)
+        {
+            return i;
         }
     }
+    return 0;
 }
