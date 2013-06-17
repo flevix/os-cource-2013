@@ -139,6 +139,9 @@ int main()
         //tt[size + 1] = '\0';
         safe_write(STDOUT_FILENO, tt, strlen(tt));
         safe_write(fd_acc, tt, strlen(tt));
+
+        free(buffer);
+        free(tt);
     }
 }
 

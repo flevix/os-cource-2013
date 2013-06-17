@@ -69,7 +69,8 @@ int main()
     //safe_write(STDOUT_FILENO, message, find_pos(message, message_len, '\n'));
     safe_write(STDOUT_FILENO, message, strlen(message));
 
-    //std::cout << std::endl;
+    std::cout << std::endl;
+    free(message);
 }
 
 void safe_write(int fd, char *buf, size_t len)
