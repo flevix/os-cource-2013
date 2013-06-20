@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pty.h>
 #include <sys/types.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -9,9 +8,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <stropts.h>
-#include <poll.h>
-#include <errno.h>
 #include <chrono>
 #include <ctime>
 
@@ -111,17 +107,18 @@ int main()
         char *buffer = safe_malloc(buffer_len);
         
         //receive hello
-        while (strcmp(message, buffer) != 0)
+        while (true)
         {
             int read_count = read(fd_acc, buffer, buffer_len);
             if (read_count == 0)
             {
                 break;
             }
-            if (strcmp(message, buffer) == 0)
-            {
-                break;
-            }
+        }
+        if (strcmp(message, buffer) != 0)
+        {
+            std::cerr << "fail" << std::endl;
+            std::exit(EXIT_FAILURE);
         }
         auto stop = std::chrono::high_resolution_clock::now();
         //print ping

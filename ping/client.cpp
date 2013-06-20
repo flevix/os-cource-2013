@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pty.h>
 #include <sys/types.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -9,9 +8,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <stropts.h>
-#include <poll.h>
-#include <errno.h>
 
 char *safe_malloc(size_t size);
 void safe_write(int fd, char *buf, size_t len);

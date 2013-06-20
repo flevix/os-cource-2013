@@ -9,3 +9,6 @@ server: server.cpp
 
 client: client.cpp
 	$(CC) $(CFLAGS) client.cpp -o client
+
+clean:
+	rm -f server client
