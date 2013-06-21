@@ -95,6 +95,8 @@ int main()
         close(socket_fd);
         fcntl(fd_acc, F_SETFL, O_NONBLOCK);
 
+        //------------------------------------------------------------------//
+
         char message[] = "Hello\n";
         size_t message_len = strlen(message);
 
@@ -110,7 +112,7 @@ int main()
         while (true)
         {
             int read_count = read(fd_acc, buffer, buffer_len);
-            if (read_count == 0)
+            if (read_count >= 0)
             {
                 break;
             }
@@ -122,9 +124,12 @@ int main()
         }
         auto stop = std::chrono::high_resolution_clock::now();
         //print ping
-        std::cout 
-            << std::chrono::duration<double>(1000 * (stop - start)).count()
-            << std::endl;
+        double ping = std::chrono::duration<double>(1000 * (stop - start) / 2).count();
+        std::cout << ping << std::endl;
+        std::cout << std::to_string(ping) << std::endl;
+        //auto curr = std::chrono::high_resolution_clock::now();
+        //double curr_time = std::chrono::duration_cast<double>(curr).count();
+        //char pp[] = std::to_string(ping);
         //time stamp
         const size_t time_size = 128;
         std::time_t t = std::time(nullptr);

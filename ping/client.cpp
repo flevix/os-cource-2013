@@ -44,7 +44,9 @@ int main()
     }
     fcntl(socket_fd, F_SETFL, O_NONBLOCK);
 
-    const size_t message_len = 32;
+    //----------------------------------------------------------------------//
+
+    const size_t message_len = 64;
 
     char *message = safe_malloc(message_len);
 
@@ -56,14 +58,16 @@ int main()
         std::cerr << "Check message failure" << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    safe_write(STDOUT_FILENO, message, strlen(message));
+
     size_t len = strlen(message);
     safe_write(socket_fd, message, len);
+    safe_write(STDOUT_FILENO, message, len);
 
     memset(message, 0, message_len);
     safe_read(socket_fd, message, message_len);
+    len = strlen(message);
     //safe_write(STDOUT_FILENO, message, find_pos(message, message_len, '\n'));
-    safe_write(STDOUT_FILENO, message, strlen(message));
+    safe_write(STDOUT_FILENO, message, len);
 
     std::cout << std::endl;
     free(message);

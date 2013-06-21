@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef enum {
     NORMAL, IGNORING
@@ -14,7 +15,8 @@ void print2(int fd, char *buf, int length) {
         while (count < length) {
             int write_count = write(fd, buf + count, length - count + 1);
             if (write_count < 0) {
-                exit(4);
+                perror("Error");
+                exit(EXIT_FAILURE);
             }
             count += write_count;
         }
@@ -22,12 +24,16 @@ void print2(int fd, char *buf, int length) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 2)
+    if (argc != 2) {
+        perror("Usage: main [buffer size]");
         exit(1);
+    }
 
     int k = atoi(argv[1]);
-    if (k < 1)
+    if (k < 1) {
+        perror(" ");
         exit(2);
+    }
     k += 1;
 
     char *data = (char*) malloc(k * sizeof(char));
