@@ -1,5 +1,4 @@
 #include <iostream>
-#include <sys/types.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -8,13 +7,40 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <chrono>
-#include <ctime>
+#include <sys/types.h>
 
 void safe_write(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
+void safe_poll(pollfd fds[], int nfds, int timeout)
+{
+    int count = poll(fds, nfds, timeout);
+    if (count == -1)
+    {
+        perror("Error");
+        std::exit(EXIT_FAILURE);
+    }
+    return count;
+}
 
 pid_t pid;
+
+struct bintree
+{
+    bintree *left;
+    bintree *right;
+    std::string value;
+
+    bintree()
+        : left(nullptr)
+        , right(nullptr)
+    {}
+
+    bintree(std::string value)
+        : left(nullptr)
+        , right(nullptr)
+        , value(value)
+    {}
+}
 
 void handler(int)
 {
@@ -71,30 +97,49 @@ int main()
         std::exit(EXIT_FAILURE);
     }
     
-    if (listen(socket_fd, 5) == -1)
+    const int backlog = 5;
+    if (listen(socket_fd, backlog) == -1)
     {
         std::exit(EXIT_FAILURE);
     }
 
+    pollfd fd[backlog + 1];
+    fd[0].fd = socket_fd;
+    fd[0].events = POLLIN;
+   
+    int clients = 1;
+    const int timeout = -1;
     while (true)
     {
-        int fd_acc = accept(socket_fd, result->ai_addr, &result->ai_addrlen);
-        if (fd_acc == -1)
+        safe_poll(fd, clients, timeout);
+
+        for (int i = 1; i < clients; i++)
         {
-            std::exit(EXIT_FAILURE);
+            if (fd[i].revents & (POLLERR | POLLHUP))
+            {
+                fd[i].events = 0;
+                fd[i].fd = -1;
+                continue;
+            }
+
+            if (fd[i].revents & POLLIN)
+            {
+            }
+
+            if (fd[i].revents & POLLOUT)
+            {
+            }
         }
-        if (fork())
+        if (fd[0].revents && POLLIN)
         {
-            if (close(fd_acc) == -1)
+            int fd_acc = accept(socket_fd, result->ai_addr, &result->ai_addrlen);
+            if (fd_acc == -1)
             {
                 std::exit(EXIT_FAILURE);
             }
-            continue;
-        }
-        close(socket_fd);
-        fcntl(fd_acc, F_SETFL, O_NONBLOCK);
-        //------------------------------------------------------------------//
-
+            fd[clients].fd = fd_acc;
+            fd[clients].events = POLLIN;
+            clients += 1;
     }
 }
 
