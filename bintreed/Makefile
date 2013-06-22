@@ -1,14 +1,11 @@
 CC=g++
 CFLAGS=-Wall -Wextra -Werror -g -std=c++11
-SOURCES=server.cpp client.cpp
+SOURCES=bintreed.cpp
 
-all: server client
+all: bintreed
 
-server: server.cpp
-	$(CC) $(CFLAGS) server.cpp -o server -lutil
-
-client: client.cpp
-	$(CC) $(CFLAGS) client.cpp -o client
+bintreed: bintreed.cpp
+	$(CC) $(CFLAGS) bintreed.cpp -o tree -lutil
 
 clean:
-	rm -f server client
+	rm -f tree

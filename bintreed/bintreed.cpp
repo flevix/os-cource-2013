@@ -5,13 +5,18 @@
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <vector>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/poll.h>
 
+std::vector<int> find_char(char *buf, char d, size_t len);
 void safe_write(int fd, char *buf, size_t len);
+int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
-void safe_poll(pollfd fds[], int nfds, int timeout)
+
+int safe_poll(pollfd fds[], int nfds, int timeout)
 {
     int count = poll(fds, nfds, timeout);
     if (count == -1)
@@ -23,24 +28,6 @@ void safe_poll(pollfd fds[], int nfds, int timeout)
 }
 
 pid_t pid;
-
-struct bintree
-{
-    bintree *left;
-    bintree *right;
-    std::string value;
-
-    bintree()
-        : left(nullptr)
-        , right(nullptr)
-    {}
-
-    bintree(std::string value)
-        : left(nullptr)
-        , right(nullptr)
-        , value(value)
-    {}
-}
 
 void handler(int)
 {
@@ -107,8 +94,12 @@ int main()
     fd[0].fd = socket_fd;
     fd[0].events = POLLIN;
    
-    int clients = 1;
+    const size_t buf_len = 1024;
     const int timeout = -1;
+    int clients = 1;
+    std::string com_add("add");
+    std::string com_print("print");
+    std::string com_del("del");
     while (true)
     {
         safe_poll(fd, clients, timeout);
@@ -124,6 +115,39 @@ int main()
 
             if (fd[i].revents & POLLIN)
             {
+                char* buf = safe_malloc(buf_len);
+                int read_count = safe_read(fd[i].fd, buf, buf_len);
+                if (read_count == 0)
+                {
+                    if (fd[i].events & POLLOUT)
+                    {
+                        fd[i].events = POLLOUT;
+                    }
+                    else
+                    {
+                        fd[i].events = 0;
+                    }
+                }
+                std::vector<int> pos = find_char(buf, ' ', read_count);
+                std::string command(buf, pos[0]);
+                std::string path(buf + pos[0], pos[1] - pos[0]);
+                std::string s_tree(buf + pos[1], read_count - pos[1]);
+                if (command == com_add)
+                {
+                    //int ret = add_tree(path, s_tree);
+                }
+                else if (command == com_print)
+                {
+                    //int ret = 
+                }
+                else if (command == com_del)
+                {
+                    //int ret =
+                }
+                else
+                {
+                    //fail
+                }
             }
 
             if (fd[i].revents & POLLOUT)
@@ -140,8 +164,25 @@ int main()
             fd[clients].fd = fd_acc;
             fd[clients].events = POLLIN;
             clients += 1;
+        }
     }
 }
+
+std::vector<int> find_char(char *buf, char d, size_t len)
+{
+    std::vector<int> pos(2);
+    int curr = 0;
+    for (size_t i = 0; i < len && curr != 2; i++)
+    {
+        if (buf[i] == d)
+        {
+            pos[curr] = d;
+            curr += 1;
+        }
+    }
+    return pos;
+}
+
 
 void safe_write(int fd, char *buf, size_t len)
 {
@@ -155,6 +196,17 @@ void safe_write(int fd, char *buf, size_t len)
         }
         write_count += curr_write;
     }
+}
+
+int safe_read(int fd, char *buf, size_t len)
+{
+    int read_count = read(fd, buf, len);
+    if (read_count < 0)
+    {
+        perror("Error");
+        std::exit(EXIT_FAILURE);
+    }
+    return read_count;
 }
 
 char *safe_malloc(size_t size)
