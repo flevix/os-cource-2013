@@ -125,8 +125,6 @@ int main()
         auto stop = std::chrono::high_resolution_clock::now();
         //print ping
         double ping = std::chrono::duration<double>(1000 * (stop - start) / 2).count();
-        std::cout << ping << std::endl;
-        std::cout << std::to_string(ping) << std::endl;
         //auto curr = std::chrono::high_resolution_clock::now();
         //double curr_time = std::chrono::duration_cast<double>(curr).count();
         //char pp[] = std::to_string(ping);
