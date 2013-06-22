@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <sys/poll.h>
 
-std::vector<int> find_char(char *buf, char d, size_t len);
 void safe_write(int fd, char *buf, size_t len);
 int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
@@ -33,12 +32,14 @@ struct tree {
 tree* head;
 
 tree* parse_tree(std::string t) {
-    tree* res = head;
+    tree* res = new tree();
     size_t i = 1, k = 1;
     if (t.length() < 8) {
+        delete res;
         return NULL;
     }
     if (t[0] != '<') {
+        delete res;
         return NULL;
     }
     std::string l = "";
@@ -58,15 +59,18 @@ tree* parse_tree(std::string t) {
         l += t[i];
         i++;
     }
-    if (i == t.length()) {
+    if (k != 0) {
+        delete res;
        return NULL; 
     }
     std::string str = "";
-    while (i < t.length() && t[i] != '>') {
+    while (i < t.length() && t[i] != '<') {
         str += t[i];
         i++;
     }
+    i++;
     if (i == t.length()) {
+        delete res;
         return NULL;
     }
     res->val == str;
@@ -88,7 +92,8 @@ tree* parse_tree(std::string t) {
         r += t[i];
         i++;
     }
-    if (i == t.length()) {
+    if (k != 0) {
+        delete res;
         return NULL;
     }
     return res;
@@ -101,9 +106,9 @@ tree* parse_path(std::string path) {
        if (path[i] == 'l') {
            cur = cur->left;
        } else if (path[i] == 'r') {
-           cur = cur-> right;
+           cur = cur->right;
        } else if (path[i] == 'h') {
-           if (i < path.length()) {
+           if (i < path.length() - 1) {
                return NULL;
            }
            return cur;
@@ -176,10 +181,16 @@ int safe_poll(pollfd fds[], int nfds, int timeout)
 
 pid_t pid;
 
+char *buf;
 void handler(int)
 {
+    if (buf != nullptr)
+    {
+        free(buf);
+    }
     kill(pid, SIGINT);
 }
+
 
 int main()
 {
@@ -250,12 +261,12 @@ int main()
     char err_path[] = "Path error\n";
     char err_tree[] = "Bad tree\n";
     char err_com[] = "Bad command\n";
-    char good[] = "Goog\n";
+    char good[] = "Good\n";
     head = new tree("()");
+    buf = safe_malloc(buf_len);
     while (true)
     {
         safe_poll(fd, clients, timeout);
-        char* buf = safe_malloc(buf_len);
         char* message;
         for (int i = 1; i < clients; i++)
         {
@@ -280,13 +291,42 @@ int main()
                         fd[i].events = 0;
                     }
                 }
-                //std::vector<int> pos = find_char(buf, ' ', read_count);
-                //std::string command(buf, pos[0]);
-                //std::string path(buf + pos[0], pos[1] - pos[0]);
-                //std::string s_tree(buf + pos[1], read_count - pos[1]);
-                std::string command = com_add;
-                std::string path = "h";
-                std::string s_tree = "<()>x<()>";
+                std::string command = "";
+                bool cm = false;
+                std::string path = "";
+                bool pa = false;
+                std::string s_tree = "";
+                int j = 0;
+                buf[read_count - 1] = ' ';
+                while (j < read_count - 1)
+                {
+                    while (buf[j] != ' ')
+                    {
+                        if (cm == false)
+                        {
+                            command += buf[j];
+                        }
+                        else if (pa == false)
+                        {
+                            path += buf[j];
+                        }
+                        else
+                        {
+                            s_tree += buf[j];
+                        }
+                        j += 1;
+                    }
+                    if (!cm)
+                    {
+                        cm = true;
+                    }
+                    else if (!pa)
+                    {
+                        pa = true;
+                    }
+                    j += 1;
+                }
+                
                 int ret;
                 message = good;
                 if (command == com_add)
@@ -313,14 +353,8 @@ int main()
                 {
                     message = err_tree;
                 }
-                fd[i].events |= POLLOUT;
                 safe_write(fd[i].fd, message, strlen(message));
             }
-
-            //if (fd[i].revents & POLLOUT)
-            //{
-            //    safe_write(fd[i].fd, message, strlen(message));
-            //}
         }
 
         if (fd[0].revents && POLLIN)
@@ -334,26 +368,8 @@ int main()
             fd[clients].events = POLLIN;
             clients += 1;
         }
-
-        free(buf);
     }
 }
-
-std::vector<int> find_char(char *buf, char d, size_t len)
-{
-    std::vector<int> pos(2);
-    int curr = 0;
-    for (size_t i = 0; i < len && curr != 2; i++)
-    {
-        if (buf[i] == d)
-        {
-            pos[curr] = d;
-            curr += 1;
-        }
-    }
-    return pos;
-}
-
 
 void safe_write(int fd, char *buf, size_t len)
 {
