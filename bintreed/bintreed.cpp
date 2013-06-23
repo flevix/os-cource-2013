@@ -23,7 +23,7 @@ int check_command(std::string command);
 bool check_path(std::string command);
 int check_tree(std::string s_tree);
 std::vector<std::string> get_command(const std::string);
-int safe_check_input(int fd, char *buf, size_t len);
+int sci(int fd, char *buf, size_t len);
 
 class Node
 {
@@ -332,10 +332,10 @@ int main()
 
             if (fd[i].revents & POLLIN)
             {
-                int ret = safe_check_input(fd[i].fd, buf, buf_len);
+                int ret = sci(fd[i].fd, buf, buf_len);
                 if (ret == -1)
                 {
-                    const std::string error_msg = "tear off your hands";
+                    const std::string error_msg = "tear off your hands\n";
                     safe_write(fd[i].fd, error_msg.c_str(), error_msg.size());
                     continue;
                 }
@@ -347,7 +347,7 @@ int main()
                     }
                     else
                     {
-                        fd[i].events = 0;
+                        //fd[i].events = 0;
                     }
                 }
                 std::vector<std::string> cm = get_command(buf);
@@ -365,7 +365,7 @@ int main()
                 }
                 else if (cm[0] == com_del)
                 {
-                    message = head.del(cm[2]);
+                    message = head.del(cm[1]);
                 }
                 safe_write(fd[i].fd, message, strlen(message));
             }
@@ -395,14 +395,14 @@ std::vector<std::string> get_command(const std::string line)
     if (ret == 2)
     {
         std::string path = line.substr(pos_fst_wspace + 1,
-                            line.length() - pos_fst_wspace - 2);
+                            line.length() - pos_fst_wspace - 3);
         tmp.push_back(path);
     }
     if (ret == 1)
     {
         size_t pos_scn_wspace = line.find(" ", pos_fst_wspace + 1);
         std::string path = line.substr(pos_fst_wspace + 1,
-                        pos_scn_wspace - pos_fst_wspace - 1);
+                        pos_scn_wspace - pos_fst_wspace - 2);
         tmp.push_back(path);
         std::string s_tree = line.substr(pos_scn_wspace + 1,
                         line.length() - pos_scn_wspace - 2);
@@ -419,7 +419,7 @@ bool check_path(std::string path)
     }
     for (size_t i = 0; i < path.length() - 1; i++)
     {
-        if (path[i] != 'l' || path[i] != 'r')
+        if (path[i] != 'l' && path[i] != 'r')
         {
             return false;
         }
@@ -478,6 +478,7 @@ int check_tree(std::string s_tree)
             }
             if (stack.top() == '<')
             {
+                stack.pop();
                 if (stack.empty())
                 {
                     left |= true;
@@ -510,7 +511,7 @@ int check_buf(std::string line)
     if (ret == 2)
     {
         std::string path = line.substr(pos_fst_wspace + 1,
-                            line.length() - pos_fst_wspace - 1);
+                            line.length() - pos_fst_wspace - 2);
         if (!check_path(path))
         {
             return -1;
@@ -524,7 +525,7 @@ int check_buf(std::string line)
             return -1;
         }
         std::string path = line.substr(pos_fst_wspace + 1,
-                        pos_scn_wspace - pos_fst_wspace - 2);
+                        pos_scn_wspace - pos_fst_wspace - 1);
         if (!check_path(path))
         {
             return -1;
@@ -537,12 +538,12 @@ int check_buf(std::string line)
     return 0;
 }
 
-int safe_check_input(int fd, char *buf, size_t len)
+int sci(int fd, char *buf, size_t len)
 {
     size_t read_count = 0;
-    int fail = 0;
+    int fail = 1;
     int curr_read = -1;
-    while (curr_read && !fail)
+    while (curr_read && fail)
     {
         curr_read = safe_read(fd, buf + read_count, len - read_count);
         read_count += curr_read;
