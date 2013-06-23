@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <vector>
+#include <cstring>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -15,157 +16,211 @@ void safe_write(int fd, char *buf, size_t len);
 int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 
-
-struct tree {
-    tree* left;
-    tree* right;
-    std::string val;
-
-    tree(std::string val) : left(NULL), right(NULL), val(val) {}
-    tree() : left(NULL), right(NULL), val("") {}
-    ~tree() {
-        delete left;
-        delete right;
-    }
+class Node
+{
+    std::string key;
+    Node* left;
+    Node* right;
+    Node* parent;
+public:
+    Node(std::string key)
+        : key(key)
+        , left(nullptr)
+        , right(nullptr)
+        , parent(nullptr)
+    {}
+    void set_key(std::string new_key)
+        { key = new_key; }
+    void set_left(Node* new_left)
+        { left = new_left; }
+    void set_right(Node* new_right)
+        { right = new_right; }
+    void set_parent(Node* new_parent)
+        { parent = new_parent; }
+    std::string get_key()
+        { return key; }
+    Node* get_left()
+        { return left; }
+    Node* get_right()
+        { return right; }
+    Node* get_parent()
+        { return parent; }
 };
 
-tree* head;
+class Speak_Tree
+{
+    Node* root;
+    const std::string success = "Success";
+    const std::string fail_path = "Fail: Incorrect path";
+    const std::string fail_root = "Fail: You can't delete empty root";
+public:
+    Speak_Tree();
+    ~Speak_Tree();
+    const char* add(std::string path, std::string tree);
+    const char* print(std::string path);
+    const char* del(std::string path);
+private:
+    void free_node(Node* node);
+    std::string trace(Node* curr);
+    Node* find(std::string path);
+    Node* build_tree(std::string tree);
+};
 
-tree* parse_tree(std::string t) {
-    tree* res = new tree();
-    size_t i = 1, k = 1;
-    if (t.length() < 8) {
-        delete res;
-        return NULL;
-    }
-    if (t[0] != '<') {
-        delete res;
-        return NULL;
-    }
-    std::string l = "";
-    while (i < t.length() && k != 0) {
-        if (t[i] == '<') {
-            k++;
-        }
-        if (t[i] == '>') {
-            k--;
-        }
-        if (k == 0) {
-            res->left = parse_tree(l);
-            if (res->left == NULL && l == "()") {
-                res->left = new tree("()");
-            }
-        }
-        l += t[i];
-        i++;
-    }
-    if (k != 0) {
-        delete res;
-       return NULL; 
-    }
-    std::string str = "";
-    while (i < t.length() && t[i] != '<') {
-        str += t[i];
-        i++;
-    }
-    i++;
-    if (i == t.length()) {
-        delete res;
-        return NULL;
-    }
-    res->val = str;
-    k = 1;
-    std::string r = "";
-    while (i < t.length() && k != 0) {
-        if (t[i] == '<') {
-           k++;
-        }
-        if (t[i] == '>') {
-            k--;
-        }
-        if (k == 0) {
-            res->right = parse_tree(r);
-            if (res->right == NULL && r == "()") {
-                res->right = new tree("()");
-            }
-        }
-        r += t[i];
-        i++;
-    }
-    if (k != 0) {
-        delete res;
-        return NULL;
-    }
-    return res;
+Speak_Tree::Speak_Tree()
+{
+    root = new Node("()");
 }
 
-
-tree* parse_path(std::string path) {
-    tree* cur = head;
-    for (size_t i = 0; i < path.length(); i++) {
-       if (path[i] == 'l') {
-           cur = cur->left;
-       } else if (path[i] == 'r') {
-           cur = cur->right;
-       } else if (path[i] == 'h') {
-           if (i < path.length() - 1) {
-               return NULL;
-           }
-           return cur;
-       } else {
-           return NULL;
-       }
-       if (cur == NULL) {
-           return NULL;
-       }
-    }
-    return NULL;
+Speak_Tree::~Speak_Tree()
+{
+    free_node(root);
 }
 
-int add_tree(std::string p, std::string t) {
-    tree* path = parse_path(p);
-    tree* tr = parse_tree(t);
-    if (path == NULL) {
-        return -1;
+void Speak_Tree::free_node(Node* node)
+{
+    if (node != nullptr)
+    {
+        free_node(node->get_left());
+        free_node(node->get_right());
+        delete node;
     }
-    if (tr == NULL) {
-        return -2;
-    }
-    path->val = tr->val;
-    path->left = tr->left;
-    path->right = tr->right;
-    return 0;
 }
 
-int del_tree(std::string p) {
-    tree* path = parse_path(p);
-    if (path == NULL) {
-        return -1;
+std::string Speak_Tree::trace(Node* curr)
+{
+    std::string dump("");
+    if (curr != nullptr)
+    {
+        dump += "|";
+        if (curr->get_left())
+        {
+            dump += "<" + trace(curr->get_left()) + ">";
+        }
+        dump += curr->get_key();
+        if (curr->get_right())
+        {
+            dump += "<" + trace(curr->get_right()) + ">";
+        }
+        dump += "|";
     }
-    path->val = "()";
-    path->left = NULL;
-    path->right = NULL;
-    return 0;
+    return dump;
 }
 
-std::string tree_to_string(tree* tr) {
-    std::string res = "";
-    if (tr->left == NULL && tr->right == NULL) {
-        return tr->val;
+Node* Speak_Tree::find(std::string path)
+{
+    Node* curr = root;
+    for (size_t i = 0; i < path.length() && curr != nullptr; i++)
+    {
+        curr = (path[i] == 'l' ? curr->get_left() : curr->get_right());
     }
-    res += "<" + tree_to_string(tr->left) + ">";
-    res += tr->val;
-    res += "<" + tree_to_string(tr->right) + ">";
-    return res;
+    return curr;
 }
 
-const char* print(std::string p) {
-    tree* path = parse_path(p); 
-    if (path == NULL) {
-        return "ERROR: invalid tree path";
+Node* Speak_Tree::build_tree(std::string t)
+{
+    Node* new_tree = new Node("()");
+    size_t fst_right_br = 0, scn_left_br = 0;
+    size_t i = 0;
+    int k = 0;
+    for (i = 0; i < t.length(); i++)
+    {
+        if (t[i] == '<') { k += 1; }
+        if (t[i] == '>') { k -= 1; }
+        if (k == 0) { break; }
     }
-    std::string res = tree_to_string(path);
-    return res.c_str();
+    fst_right_br = i;
+    for (i = fst_right_br; t[i] != '<' && i < t.length(); i++);
+    scn_left_br = i;
+    std::string left = t.substr(1, fst_right_br - 1);
+    std::string val = t.substr(fst_right_br + 1, scn_left_br - fst_right_br - 1);
+    std::string right = t.substr(scn_left_br + 1, t.length() - scn_left_br - 2);
+    if (!right.empty())
+    {
+        if (right == "()")
+        {
+            new_tree->set_right(new Node(right));
+        }
+        else
+        {
+            new_tree->set_right(build_tree(right));
+        }
+        new_tree->get_right()->set_parent(new_tree);
+    }
+    if (!left.empty())
+    {
+        if (left == "()")
+        {
+            new_tree->set_left(new Node(left));
+        }
+        else
+        {
+            new_tree->set_left(build_tree(left));
+        }
+        new_tree->get_left()->set_parent(new_tree);
+    }
+    new_tree->set_key(val);
+    return new_tree;
+}
+
+const char* Speak_Tree::add(std::string path, std::string tree)
+{
+    Node* curr = find(path);
+    if (curr == nullptr)
+    {
+        return fail_path.data();
+    }
+    Node* new_tree = build_tree(tree);
+    new_tree->set_parent(curr->get_parent());
+    if (curr->get_parent())
+    {
+        if (curr->get_parent()->get_left() == curr) {
+            curr->get_parent()->set_left(new_tree);
+            new_tree->set_parent(curr->get_parent());
+        } else {
+            curr->get_parent()->set_right(new_tree);
+        }
+        free_node(curr);
+    } else { //root
+        delete curr;
+        root = new_tree;
+    }
+    return success.data(); 
+}
+
+const char* Speak_Tree::print(std::string path)
+{
+    Node* curr = find(path);
+    if (curr == nullptr)
+    {
+        return fail_path.data();
+    }
+    return (success + " " + trace(curr)).data();
+}
+
+const char* Speak_Tree::del(std::string path)
+{
+    Node* curr = find(path);
+    if (curr == nullptr)
+    {
+        return fail_path.data();
+    }
+    if (curr == root && curr->get_key() == "()")
+    {
+        return fail_root.data();
+    }
+    if (curr->get_parent())
+    {
+        if (curr->get_parent()->get_left() == curr) {
+            curr->get_parent()->set_left(nullptr);
+        } else {
+            curr->get_parent()->set_right(nullptr);
+        }
+        free_node(curr);
+    } else {
+        delete curr;
+        root = new Node("()");
+    }
+    return success.data();
 }
 
 int safe_poll(pollfd fds[], int nfds, int timeout)
@@ -258,22 +313,19 @@ int main()
     std::string com_add("add");
     std::string com_print("print");
     std::string com_del("del");
-    char err_path[] = "Path error\n";
-    char err_tree[] = "Bad tree\n";
-    char err_com[] = "Bad command\n";
-    char good[] = "Good\n";
-    head = new tree("()");
+    Speak_Tree head;
     buf = safe_malloc(buf_len);
     while (true)
     {
+        //sigpipe =(
         safe_poll(fd, clients, timeout);
-        char* message;
+        //char* message;
         for (int i = 1; i < clients; i++)
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
             {
-                fd[i].events = 0;
-                fd[i].fd = -1;
+                fd[i] = fd[clients - 1];
+                clients -= 1;
                 continue;
             }
 
@@ -326,33 +378,30 @@ int main()
                     }
                     j += 1;
                 }
-                
-                int ret;
-                message = good;
+                path = path.substr(0, path.length() - 1);
+                std::cout << "\'" << command << "\'" << std::endl;
+                std::cout << "\'" << path << "\'" << std::endl;
+                std::cout << "\'" << s_tree << "\'" << std::endl;
+                char message[1024];
                 if (command == com_add)
                 {
-                    ret = add_tree(path, s_tree);
+                    std::cout << head.add(path, s_tree) << std::endl;
+                    std::strcpy(message, head.add(path, s_tree));
+                    //message = std::strcpy(const_cast<char*>(head.add(path, s_tree)));
                 }
                 else if (command == com_print)
                 {
-                    message = const_cast<char*>(print(path));
+                    std::cout << head.print(path) << std::endl;
+                    std::strcpy(message, head.print(path));
+                    //message = std::strcpy(const_cast<char*>(head.print(path)));
                 }
                 else if (command == com_del)
                 {
-                    ret = del_tree(path);
+                    std::cout << head.del(path) << std::endl;
+                    std::strcpy(message, head.del(path));
+                    //message = std::strcpy(const_cast<char*>(head.del(path)));
                 }
-                else
-                {
-                    message = err_com;
-                }
-                if (ret == -1)
-                {
-                    message = err_path;
-                }
-                if (ret == -2)
-                {
-                    message = err_tree;
-                }
+                safe_write(fd[i].fd, message, strlen(message));
                 safe_write(fd[i].fd, message, strlen(message));
             }
         }
