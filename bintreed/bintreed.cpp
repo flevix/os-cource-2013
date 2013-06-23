@@ -73,7 +73,7 @@ tree* parse_tree(std::string t) {
         delete res;
         return NULL;
     }
-    res->val == str;
+    res->val = str;
     k = 1;
     std::string r = "";
     while (i < t.length() && k != 0) {
