@@ -12,9 +12,11 @@
 #include <sys/types.h>
 #include <sys/poll.h>
 
-void safe_write(int fd, char *buf, size_t len);
+void safe_write(int fd, const char *buf, size_t len);
 int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
+int safe_poll(pollfd fds[], int nfds, int timeout);
+std::vector<std::string> safe_check_input(char *buf, size_t len);
 
 class Node
 {
@@ -50,9 +52,9 @@ public:
 class Speak_Tree
 {
     Node* root;
-    const std::string success = "Success";
-    const std::string fail_path = "Fail: Incorrect path";
-    const std::string fail_root = "Fail: You can't delete empty root";
+    const std::string success = "Success\n";
+    const std::string fail_path = "Fail: Incorrect path\n";
+    const std::string fail_root = "Fail: You can't delete empty root\n";
 public:
     Speak_Tree();
     ~Speak_Tree();
@@ -194,7 +196,7 @@ const char* Speak_Tree::print(std::string path)
     {
         return fail_path.data();
     }
-    return (success + " " + trace(curr)).data();
+    return (success + " " + trace(curr) + "\n").data();
 }
 
 const char* Speak_Tree::del(std::string path)
@@ -223,20 +225,10 @@ const char* Speak_Tree::del(std::string path)
     return success.data();
 }
 
-int safe_poll(pollfd fds[], int nfds, int timeout)
-{
-    int count = poll(fds, nfds, timeout);
-    if (count == -1)
-    {
-        perror("Error");
-        std::exit(EXIT_FAILURE);
-    }
-    return count;
-}
 
 pid_t pid;
-
 char *buf;
+
 void handler(int)
 {
     if (buf != nullptr)
@@ -313,13 +305,14 @@ int main()
     std::string com_add("add");
     std::string com_print("print");
     std::string com_del("del");
+
     Speak_Tree head;
     buf = safe_malloc(buf_len);
     while (true)
     {
         //sigpipe =(
         safe_poll(fd, clients, timeout);
-        //char* message;
+        const char* message;
         for (int i = 1; i < clients; i++)
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
@@ -379,29 +372,18 @@ int main()
                     j += 1;
                 }
                 path = path.substr(0, path.length() - 1);
-                std::cout << "\'" << command << "\'" << std::endl;
-                std::cout << "\'" << path << "\'" << std::endl;
-                std::cout << "\'" << s_tree << "\'" << std::endl;
-                char message[1024];
                 if (command == com_add)
                 {
-                    std::cout << head.add(path, s_tree) << std::endl;
-                    std::strcpy(message, head.add(path, s_tree));
-                    //message = std::strcpy(const_cast<char*>(head.add(path, s_tree)));
+                    message = head.add(path, s_tree);
                 }
                 else if (command == com_print)
                 {
-                    std::cout << head.print(path) << std::endl;
-                    std::strcpy(message, head.print(path));
-                    //message = std::strcpy(const_cast<char*>(head.print(path)));
+                    message = head.print(path);
                 }
                 else if (command == com_del)
                 {
-                    std::cout << head.del(path) << std::endl;
-                    std::strcpy(message, head.del(path));
-                    //message = std::strcpy(const_cast<char*>(head.del(path)));
+                    message = head.del(path);
                 }
-                safe_write(fd[i].fd, message, strlen(message));
                 safe_write(fd[i].fd, message, strlen(message));
             }
         }
@@ -420,7 +402,30 @@ int main()
     }
 }
 
-void safe_write(int fd, char *buf, size_t len)
+std::vector<std::string> safe_check_input(char *buf, size_t len)
+{
+    char c;
+    for (size_t i = 0; i < len; i++)
+    {
+        c = buf[i];
+    }
+    buf[0] = c;
+    std::vector<std::string> q(len);
+    return q;
+}
+
+int safe_poll(pollfd fds[], int nfds, int timeout)
+{
+    int count = poll(fds, nfds, timeout);
+    if (count == -1)
+    {
+        perror("Error");
+        std::exit(EXIT_FAILURE);
+    }
+    return count;
+}
+
+void safe_write(int fd, const char *buf, size_t len)
 {
     size_t write_count = 0;
     while (write_count < len)
