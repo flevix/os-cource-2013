@@ -233,6 +233,13 @@ const char* Speak_Tree::del(std::string path)
 }
 
 
+const std::string error_msg = "tear off your hands\n";
+const std::string com_add("add");
+const std::string com_add2("a");
+const std::string com_print("print");
+const std::string com_print2("p");
+const std::string com_del("del");
+const std::string com_del2("d");
 pid_t pid;
 char *buf;
 
@@ -308,9 +315,6 @@ int main()
    
     const int timeout = -1;
     int clients = 1;
-    std::string com_add("add");
-    std::string com_print("print");
-    std::string com_del("del");
 
     Speak_Tree head;
     const size_t buf_len = 1024 + 1;
@@ -335,35 +339,19 @@ int main()
                 int ret = sci(fd[i].fd, buf, buf_len);
                 if (ret == -1)
                 {
-                    const std::string error_msg = "tear off your hands\n";
                     safe_write(fd[i].fd, error_msg.c_str(), error_msg.size());
                     continue;
                 }
-                if (ret == 0)
-                {
-                    if (fd[i].events & POLLOUT)
-                    {
-                        fd[i].events = POLLOUT;
-                    }
-                    else
-                    {
-                        //fd[i].events = 0;
-                    }
-                }
                 std::vector<std::string> cm = get_command(buf);
-                for (size_t z = 0; z < cm.size(); z++)
-                {
-                    std::cout << "\'" << cm[z] << "\'" << std::endl;
-                }
-                if (cm[0] == com_add)
+                if (cm[0] == com_add || cm[0] == com_add2)
                 {
                     message = head.add(cm[1], cm[2]);
                 }
-                else if (cm[0] == com_print)
+                else if (cm[0] == com_print || cm[0] == com_print2)
                 {
                     message = head.print(cm[1]);
                 }
-                else if (cm[0] == com_del)
+                else if (cm[0] == com_del || cm[0] == com_del2)
                 {
                     message = head.del(cm[1]);
                 }
@@ -387,6 +375,7 @@ int main()
 
 std::vector<std::string> get_command(const std::string line)
 {
+    //heeeeeell
     std::vector<std::string> tmp;
     size_t pos_fst_wspace = line.find(" ", 0);
     std::string command = line.substr(0, pos_fst_wspace);
@@ -413,10 +402,6 @@ std::vector<std::string> get_command(const std::string line)
 
 bool check_path(std::string path)
 {
-    if (path.back() != 'h')
-    {
-        return false;
-    }
     for (size_t i = 0; i < path.length() - 1; i++)
     {
         if (path[i] != 'l' && path[i] != 'r')
@@ -424,16 +409,17 @@ bool check_path(std::string path)
             return false;
         }
     }
-    return true;
+    return path.back() == 'h';
 }
 
 int check_command(std::string command)
 {
-    if (command == "add")
+    if (command == com_add || command == com_add2)
     {
         return 1;
     }
-    if (command == "print" || command == "del")
+    if (command == com_print || command == com_del
+        || command == com_print2 || command == com_del2)
     {
         return 2;
     }
@@ -442,6 +428,7 @@ int check_command(std::string command)
 
 int check_tree(std::string s_tree)
 {
+    //heeeeeeell
     bool left = false;
     bool right = false;
     size_t i;
@@ -497,6 +484,7 @@ int check_tree(std::string s_tree)
 
 int check_buf(std::string line)
 {
+    ///aaaaaaaa
     size_t pos_fst_wspace = line.find(" ", 0);
     if (pos_fst_wspace == std::string::npos)
     {
