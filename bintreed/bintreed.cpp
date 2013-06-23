@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <vector>
 #include <cstring>
+#include <stack>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -16,7 +17,13 @@ void safe_write(int fd, const char *buf, size_t len);
 int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
-std::vector<std::string> safe_check_input(char *buf, size_t len);
+int check_buf(char *buf, size_t length);
+int find(char *buf, size_t pos, size_t length, char ch);
+int check_command(std::string command);
+bool check_path(std::string command);
+int check_tree(std::string s_tree);
+std::vector<std::string> get_command(const std::string);
+int safe_check_input(int fd, char *buf, size_t len);
 
 class Node
 {
@@ -299,7 +306,6 @@ int main()
     fd[0].fd = socket_fd;
     fd[0].events = POLLIN;
    
-    const size_t buf_len = 1024;
     const int timeout = -1;
     int clients = 1;
     std::string com_add("add");
@@ -307,6 +313,7 @@ int main()
     std::string com_del("del");
 
     Speak_Tree head;
+    const size_t buf_len = 1024 + 1;
     buf = safe_malloc(buf_len);
     while (true)
     {
@@ -317,6 +324,7 @@ int main()
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
             {
+                fd[i].fd = -1;
                 fd[i] = fd[clients - 1];
                 clients -= 1;
                 continue;
@@ -324,8 +332,14 @@ int main()
 
             if (fd[i].revents & POLLIN)
             {
-                int read_count = safe_read(fd[i].fd, buf, buf_len);
-                if (read_count == 0)
+                int ret = safe_check_input(fd[i].fd, buf, buf_len);
+                if (ret == -1)
+                {
+                    const std::string error_msg = "tear off your hands";
+                    safe_write(fd[i].fd, error_msg.c_str(), error_msg.size());
+                    continue;
+                }
+                if (ret == 0)
                 {
                     if (fd[i].events & POLLOUT)
                     {
@@ -336,53 +350,22 @@ int main()
                         fd[i].events = 0;
                     }
                 }
-                std::string command = "";
-                bool cm = false;
-                std::string path = "";
-                bool pa = false;
-                std::string s_tree = "";
-                int j = 0;
-                buf[read_count - 1] = ' ';
-                while (j < read_count - 1)
+                std::vector<std::string> cm = get_command(buf);
+                for (size_t z = 0; z < cm.size(); z++)
                 {
-                    while (buf[j] != ' ')
-                    {
-                        if (cm == false)
-                        {
-                            command += buf[j];
-                        }
-                        else if (pa == false)
-                        {
-                            path += buf[j];
-                        }
-                        else
-                        {
-                            s_tree += buf[j];
-                        }
-                        j += 1;
-                    }
-                    if (!cm)
-                    {
-                        cm = true;
-                    }
-                    else if (!pa)
-                    {
-                        pa = true;
-                    }
-                    j += 1;
+                    std::cout << "\'" << cm[z] << "\'" << std::endl;
                 }
-                path = path.substr(0, path.length() - 1);
-                if (command == com_add)
+                if (cm[0] == com_add)
                 {
-                    message = head.add(path, s_tree);
+                    message = head.add(cm[1], cm[2]);
                 }
-                else if (command == com_print)
+                else if (cm[0] == com_print)
                 {
-                    message = head.print(path);
+                    message = head.print(cm[1]);
                 }
-                else if (command == com_del)
+                else if (cm[0] == com_del)
                 {
-                    message = head.del(path);
+                    message = head.del(cm[2]);
                 }
                 safe_write(fd[i].fd, message, strlen(message));
             }
@@ -396,22 +379,182 @@ int main()
                 std::exit(EXIT_FAILURE);
             }
             fd[clients].fd = fd_acc;
-            fd[clients].events = POLLIN;
+            fd[clients].events = POLLIN | POLLERR | POLLHUP;
             clients += 1;
         }
     }
 }
 
-std::vector<std::string> safe_check_input(char *buf, size_t len)
+std::vector<std::string> get_command(const std::string line)
 {
-    char c;
-    for (size_t i = 0; i < len; i++)
+    std::vector<std::string> tmp;
+    size_t pos_fst_wspace = line.find(" ", 0);
+    std::string command = line.substr(0, pos_fst_wspace);
+    tmp.push_back(command);
+    int ret = check_command(command);
+    if (ret == 2)
     {
-        c = buf[i];
+        std::string path = line.substr(pos_fst_wspace + 1,
+                            line.length() - pos_fst_wspace - 2);
+        tmp.push_back(path);
     }
-    buf[0] = c;
-    std::vector<std::string> q(len);
-    return q;
+    if (ret == 1)
+    {
+        size_t pos_scn_wspace = line.find(" ", pos_fst_wspace + 1);
+        std::string path = line.substr(pos_fst_wspace + 1,
+                        pos_scn_wspace - pos_fst_wspace - 1);
+        tmp.push_back(path);
+        std::string s_tree = line.substr(pos_scn_wspace + 1,
+                        line.length() - pos_scn_wspace - 2);
+        tmp.push_back(s_tree);
+    }
+    return tmp;
+}
+
+bool check_path(std::string path)
+{
+    if (path.back() != 'h')
+    {
+        return false;
+    }
+    for (size_t i = 0; i < path.length() - 1; i++)
+    {
+        if (path[i] != 'l' || path[i] != 'r')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+int check_command(std::string command)
+{
+    if (command == "add")
+    {
+        return 1;
+    }
+    if (command == "print" || command == "del")
+    {
+        return 2;
+    }
+    return 0;
+}
+
+int check_tree(std::string s_tree)
+{
+    bool left = false;
+    bool right = false;
+    size_t i;
+    std::stack<char> stack;
+    for (i = 0; i < s_tree.length(); i++)
+    {
+        char c = s_tree[i];
+        if (c == '<')
+        {
+            stack.push(c);
+            right = left;
+        } else
+        if (c == '(')
+        {
+            if (stack.empty())
+            {
+                return -1;
+            }
+            stack.push(c);
+        } else
+        if (c == ')')
+        {
+            if (stack.empty() || stack.top() != '(')
+            {
+                return -1;
+            }
+            stack.pop();
+        } else
+        if (c == '>')
+        {
+            if (stack.empty())
+            {
+                return -1;
+            }
+            if (stack.top() == '<')
+            {
+                if (stack.empty())
+                {
+                    left |= true;
+                }
+            } else {
+                return -1;
+            }
+        }
+    }
+    if (right && stack.empty())
+    {
+        return 0;
+    }
+    return (right) ? -1 : -2;
+}
+
+int check_buf(std::string line)
+{
+    size_t pos_fst_wspace = line.find(" ", 0);
+    if (pos_fst_wspace == std::string::npos)
+    {
+        return -1;
+    }
+    std::string command = line.substr(0, pos_fst_wspace);
+    int ret = check_command(command);
+    if (!ret)
+    {
+        return -1;
+    }
+    if (ret == 2)
+    {
+        std::string path = line.substr(pos_fst_wspace + 1,
+                            line.length() - pos_fst_wspace - 1);
+        if (!check_path(path))
+        {
+            return -1;
+        }
+    }
+    if (ret == 1)
+    {
+        size_t pos_scn_wspace = line.find(" ", pos_fst_wspace + 1);
+        if (pos_scn_wspace == std::string::npos)
+        {
+            return -1;
+        }
+        std::string path = line.substr(pos_fst_wspace + 1,
+                        pos_scn_wspace - pos_fst_wspace - 2);
+        if (!check_path(path))
+        {
+            return -1;
+        }
+        std::string s_tree = line.substr(pos_scn_wspace + 1,
+                        line.length() - pos_scn_wspace - 2);
+        ret = check_tree(s_tree);
+        return ret;
+    }
+    return 0;
+}
+
+int safe_check_input(int fd, char *buf, size_t len)
+{
+    size_t read_count = 0;
+    int fail = 0;
+    int curr_read = -1;
+    while (curr_read && !fail)
+    {
+        curr_read = safe_read(fd, buf + read_count, len - read_count);
+        read_count += curr_read;
+        buf[read_count] = '\0';
+        //-1 super fail; -2 waiting; 0 - super ok
+        fail = check_buf(buf);
+        if (fail == -1)
+        {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 int safe_poll(pollfd fds[], int nfds, int timeout)
