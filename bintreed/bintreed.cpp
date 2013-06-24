@@ -342,6 +342,17 @@ int main()
                     safe_write(fd[i].fd, error_msg.c_str(), error_msg.size());
                     continue;
                 }
+                if (ret == -2)
+                {
+                    if (fd[i].events & POLLOUT)
+                    {
+                        fd[i].events = POLLOUT;
+                    }
+                    else
+                    {
+                        fd[i].events = 0;
+                    }
+                }
                 std::vector<std::string> cm = get_command(buf);
                 if (cm[0] == com_add || cm[0] == com_add2)
                 {
@@ -534,6 +545,10 @@ int sci(int fd, char *buf, size_t len)
     while (curr_read && fail)
     {
         curr_read = safe_read(fd, buf + read_count, len - read_count);
+        if (curr_read == 0)
+        {
+            return -2;
+        }
         read_count += curr_read;
         buf[read_count] = '\0';
         //-1 super fail; -2 waiting; 0 - super ok
