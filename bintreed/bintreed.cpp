@@ -328,12 +328,10 @@ int main()
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
             {
-                fd[i].fd = -1;
                 fd[i] = fd[clients - 1];
                 clients -= 1;
                 continue;
             }
-
             if (fd[i].revents & POLLIN)
             {
                 int ret = sci(fd[i].fd, buf, buf_len);
