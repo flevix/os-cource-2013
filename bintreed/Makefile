@@ -5,7 +5,7 @@ SOURCES=bintreed.cpp
 all: bintreed
 
 bintreed: bintreed.cpp
-	$(CC) $(CFLAGS) bintreed.cpp -o tree -lutil
+	$(CC) $(CFLAGS) bintreed.cpp -o bintreed -lutil
 
 clean:
-	rm -f tree
+	rm -f bintreed
