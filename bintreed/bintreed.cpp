@@ -382,7 +382,7 @@ int main()
                 std::exit(EXIT_FAILURE);
             }
             fd[clients].fd = fd_acc;
-            fd[clients].events = POLLIN | POLLERR | POLLHUP;
+            fd[clients].events = POLLIN;
             clients += 1;
         }
     }
