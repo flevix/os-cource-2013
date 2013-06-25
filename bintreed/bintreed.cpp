@@ -23,7 +23,7 @@ int check_command(std::string command);
 bool check_path(std::string command);
 int check_tree(std::string s_tree);
 std::vector<std::string> get_command(const std::string);
-int sci(int fd, char *buf, size_t len);
+int safe_check_input(int fd, char *buf, size_t len);
 
 class Node
 {
@@ -65,9 +65,9 @@ class Speak_Tree
 public:
     Speak_Tree();
     ~Speak_Tree();
-    const char* add(std::string path, std::string tree);
-    const char* print(std::string path);
-    const char* del(std::string path);
+    std::string add(std::string path, std::string tree);
+    std::string print(std::string path);
+    std::string del(std::string path);
 private:
     void free_node(Node* node);
     std::string trace(Node* curr);
@@ -171,12 +171,12 @@ Node* Speak_Tree::build_tree(std::string t)
     return new_tree;
 }
 
-const char* Speak_Tree::add(std::string path, std::string tree)
+std::string Speak_Tree::add(std::string path, std::string tree)
 {
     Node* curr = find(path);
     if (curr == nullptr)
     {
-        return fail_path.data();
+        return fail_path;
     }
     Node* new_tree = build_tree(tree);
     new_tree->set_parent(curr->get_parent());
@@ -193,29 +193,30 @@ const char* Speak_Tree::add(std::string path, std::string tree)
         delete curr;
         root = new_tree;
     }
-    return success.data(); 
+    return success;
 }
 
-const char* Speak_Tree::print(std::string path)
+std::string Speak_Tree::print(std::string path)
 {
     Node* curr = find(path);
     if (curr == nullptr)
     {
-        return fail_path.data();
+        return fail_path;
     }
-    return (success + " " + trace(curr) + "\n").data();
+    std::string result = success + " " + trace(curr) + "\n";
+    return result;
 }
 
-const char* Speak_Tree::del(std::string path)
+std::string Speak_Tree::del(std::string path)
 {
     Node* curr = find(path);
     if (curr == nullptr)
     {
-        return fail_path.data();
+        return fail_path;
     }
     if (curr == root && curr->get_key() == "()")
     {
-        return fail_root.data();
+        return fail_root;
     }
     if (curr->get_parent())
     {
@@ -229,7 +230,7 @@ const char* Speak_Tree::del(std::string path)
         delete curr;
         root = new Node("()");
     }
-    return success.data();
+    return success;
 }
 
 
@@ -319,11 +320,11 @@ int main()
     Speak_Tree head;
     const size_t buf_len = 1024 + 1;
     buf = safe_malloc(buf_len);
+    std::string message;
     while (true)
     {
         //sigpipe =(
         safe_poll(fd, clients, timeout);
-        const char* message;
         for (int i = 1; i < clients; i++)
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
@@ -334,10 +335,10 @@ int main()
             }
             if (fd[i].revents & POLLIN)
             {
-                int ret = sci(fd[i].fd, buf, buf_len);
+                int ret = safe_check_input(fd[i].fd, buf, buf_len);
                 if (ret == -1)
                 {
-                    safe_write(fd[i].fd, error_msg.c_str(), error_msg.size());
+                    safe_write(fd[i].fd, error_msg.data(), error_msg.size());
                     continue;
                 }
                 if (ret == -2)
@@ -364,7 +365,7 @@ int main()
                 {
                     message = head.del(cm[1]);
                 }
-                safe_write(fd[i].fd, message, strlen(message));
+                safe_write(fd[i].fd, message.data(), message.size());
             }
         }
 
@@ -535,7 +536,7 @@ int check_buf(std::string line)
     return 0;
 }
 
-int sci(int fd, char *buf, size_t len)
+int safe_check_input(int fd, char *buf, size_t len)
 {
     size_t read_count = 0;
     int fail = 1;
