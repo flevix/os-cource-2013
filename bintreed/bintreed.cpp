@@ -244,7 +244,7 @@ const std::string com_del2("d");
 pid_t pid;
 char *buf;
 
-void handler(int)
+void handler_sigint(int)
 {
     if (buf != nullptr)
     {
@@ -253,13 +253,15 @@ void handler(int)
     kill(pid, SIGINT);
 }
 
+void handler(int)
+{}
 
 int main()
 {
     pid = fork();
     if (pid)
     {
-        signal(SIGINT, handler);
+        signal(SIGINT, handler_sigint);
         std::cout << "Server starter with pid = " << pid << std::endl;
         int status;
         waitpid(pid, &status, 0);
@@ -321,6 +323,8 @@ int main()
     const size_t buf_len = 1024 + 1;
     buf = safe_malloc(buf_len);
     std::string message;
+    signal(SIGHUP, handler);
+    signal(SIGPIPE, handler);
     while (true)
     {
         //sigpipe =(
@@ -329,6 +333,7 @@ int main()
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
             {
+                //close(fd[i].fd);
                 fd[i] = fd[clients - 1];
                 clients -= 1;
                 continue;
@@ -579,7 +584,9 @@ void safe_write(int fd, const char *buf, size_t len)
         int curr_write = write(fd, buf + write_count, len - write_count);
         if (curr_write == -1)
         {
-            std::exit(EXIT_FAILURE);
+            perror("WRITE");
+            return;
+            //std::exit(EXIT_FAILURE);
         }
         write_count += curr_write;
     }
