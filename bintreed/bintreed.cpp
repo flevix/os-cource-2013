@@ -234,7 +234,7 @@ std::string Speak_Tree::del(std::string path)
 }
 
 
-const std::string error_msg = "tear off your hands\n";
+const std::string error_msg = "Bad command\n";
 const std::string com_add("add");
 const std::string com_add2("a");
 const std::string com_print("print");
@@ -584,7 +584,7 @@ void safe_write(int fd, const char *buf, size_t len)
         int curr_write = write(fd, buf + write_count, len - write_count);
         if (curr_write == -1)
         {
-            perror("WRITE");
+            //perror("WRITE");
             return;
             //std::exit(EXIT_FAILURE);
         }
