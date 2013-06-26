@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <vector>
+#include <sstream>
+#include <map>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -12,45 +14,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-void safe_write(int fd, const char *buf, size_t len);
+int safe_write(int fd, char *buf, size_t len);
 int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
 
-class Multi_Queue
-{
-public:
-    std::vector<char> buffer;
-
-    Multi_Queue()
-    {
-        buffer.push_back('\0');
-    }
-    
-    void add(std::string &str)
-    {
-        for (size_t i = 0; i < str.size(); i++)
-        {
-            buffer.push_back(str[i]);
-        }
-    }
-
-    size_t size()
-    {
-        return buffer.size();
-    }
-};
-
-#define PORT "1488"
+#define PORT "8888"
 pid_t pid;
-char *buf;
 
 void handler_sigint(int)
 {
-    if (buf != nullptr)
-    {
-        free(buf);
-    }
     kill(pid, SIGINT);
 }
 
@@ -77,7 +50,6 @@ int main()
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     hints.ai_protocol = 0;
-
     addrinfo *result;
     if (getaddrinfo(nullptr, PORT,  &hints, &result) != 0)
     {
@@ -118,52 +90,30 @@ int main()
         std::exit(EXIT_FAILURE);
     }
 
-    const int timeout = -1;
-    int clients = 1;
-
-    const size_t buf_len = 1024 + 1;
-    buf = safe_malloc(buf_len);
-
-    signal(SIGHUP, handler);
-    signal(SIGPIPE, handler);
-    std::vector<struct pollfd> fd(1);
-    fd[0].fd = socket_fd;
-    fd[0].events = POLLIN;
-    std::vector<std::string> stuff();
+    pollfd fds[backlog + 1];
+    fds[0].fd = socket_fd;
+    fds[0].events = POLLIN;
+    nfds_t nfds = 1;
+    int timeout = -1;
     while (true)
     {
-        safe_poll(fd.data(), fd.size(), timeout);
-        for (int i = 1; i < clients; i++)
-        {
-            if (fd[i].revents & (POLLERR | POLLHUP))
+        safe_poll(fds, nfds, timeout);
+        for (nfds_t i = 1; i < nfds; i++) {
+            if (fds[i].revents & (POLLERR | POLLHUP))
             {
-                fd[i] = fd[clients - 1];
-                clients -= 1;
-                continue;
+
             }
-            if (fd[i].revents & POLLIN)
+            else if (fds[i].revents & POLLIN)
             {
+
             }
-            if (fd[i].revents & POLLOUT)
+            else if (fds[i].revents & POLLOUT)
             {
+
             }
         }
+        if (fds[0].revents & POLLIN) {
 
-        if (fd[0].revents && POLLIN)
-        {
-            int fd_acc = accept(socket_fd, result->ai_addr, &result->ai_addrlen);
-            //sockaddr_in ss = (addrinfo*) result;
-            //std::string qq(inet_ntoa(ss->sin_addr));
-            //std::cout << qq << std::endl;
-            //std::cout << ((sockaddr_in*) result)->sin_addr << std::endl;
-            if (fd_acc == -1)
-            {
-                perror("ACCEPT");
-                std::exit(EXIT_FAILURE);
-            }
-            fd[clients].fd = fd_acc;
-            fd[clients].events = POLLIN;
-            clients += 1;
         }
     }
 }
@@ -179,24 +129,20 @@ int safe_poll(pollfd fds[], int nfds, int timeout)
     return count;
 }
 
-void safe_write(int fd, const char *buf, size_t len)
+int safe_write(int fd, char *buf, size_t len)
 {
-    size_t write_count = 0;
-    while (write_count < len)
+    ssize_t curr_write = write(fd, buf, len);
+    if (curr_write == -1)
     {
-        int curr_write = write(fd, buf + write_count, len - write_count);
-        if (curr_write == -1)
-        {
-            perror("WRITE");
-            return;
-        }
-        write_count += curr_write;
+        perror("WRITE");
+        std::exit(EXIT_FAILURE);
     }
+    return curr_write;
 }
 
 int safe_read(int fd, char *buf, size_t len)
 {
-    int read_count = read(fd, buf, len);
+    ssize_t read_count = read(fd, buf, len);
     if (read_count < 0)
     {
         perror("READ");
