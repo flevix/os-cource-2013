@@ -13,6 +13,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+ssize_t safe_write(int fd, char *buf, size_t len);
+ssize_t safe_read(int fd, char *buf, size_t len);
+char* safe_malloc(size_t size);
+int safe_poll(pollfd fds[], int nfds, int timeout);
+int safe_accept(int socket, sockaddr *address,
+                socklen_t *address_len);
+
 class Node
 {
 public:
@@ -33,6 +40,7 @@ public:
     Node *head;
     Node *tail;
     std::map<int, Node*> heads;
+    std::map<int, int> pos;
 
     Multi_Queue()
     {
@@ -75,16 +83,16 @@ public:
     }
 };
 
-ssize_t safe_write(int fd, char *buf, size_t len);
-ssize_t safe_read(int fd, char *buf, size_t len);
-char* safe_malloc(size_t size);
-int safe_poll(pollfd fds[], int nfds, int timeout);
-
 #define PORT "8888"
 pid_t pid;
+char *buf;
 
 void handler_sigint(int)
 {
+    if (buf != nullptr)
+    {
+        free(buf);
+    }
     kill(pid, SIGINT);
 }
 
@@ -151,11 +159,19 @@ int main()
         std::exit(EXIT_FAILURE);
     }
 
+
+    Multi_Queue queue;
+    std::vector<std::string> read_buffers(backlog);
+    std::vector<std::string> names(backlog);
+
     pollfd fds[backlog + 1];
     fds[0].fd = socket_fd;
     fds[0].events = POLLIN;
     nfds_t nfds = 1;
     int timeout = -1;
+
+    signal(SIGHUP, handler);
+    signal(SIGPIPE, handler);
     while (true)
     {
         safe_poll(fds, nfds, timeout);
@@ -173,10 +189,31 @@ int main()
 
             }
         }
-        if (fds[0].revents & POLLIN) {
-
+        if (fds[0].revents & POLLIN && nfds < backlog) {
+            sockaddr_in address;
+            address.sin_family = AF_INET;
+            socklen_t address_len = sizeof(address);
+            int fd = accept(socket_fd, (sockaddr*) &address,
+                            (socklen_t*) &address_len);
+            fds[nfds].fd = fd;
+            fds[nfds].events = POLLIN | POLLOUT;
+            names.push_back(inet_ntoa(address.sin_addr));
+            queue.add_head(fd);
+            nfds += 1;
         }
     }
+}
+
+int safe_accept(int socket, sockaddr *address,
+                socklen_t *address_len)
+{
+    int fd = accept(socket, address, address_len);
+    if (fd == -1)
+    {
+        perror("ACCEPT");
+        std::exit(EXIT_FAILURE);
+    }
+    return fd;
 }
 
 int safe_poll(pollfd fds[], int nfds, int timeout)
