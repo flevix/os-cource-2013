@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <map>
+#include <vector>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -25,19 +25,17 @@ public:
     Multi_Queue()
     {
         buffer.push_back('\0');
-        int size = 0;
     }
     
     void add(std::string &str)
     {
-        for (int i = 0; i < str.size(); i++)
+        for (size_t i = 0; i < str.size(); i++)
         {
             buffer.push_back(str[i]);
         }
-        size += str.size();
     }
 
-    int size()
+    size_t size()
     {
         return buffer.size();
     }
@@ -120,10 +118,6 @@ int main()
         std::exit(EXIT_FAILURE);
     }
 
-    pollfd fd[backlog + 1];
-    fd[0].fd = socket_fd;
-    fd[0].events = POLLIN;
-   
     const int timeout = -1;
     int clients = 1;
 
@@ -132,9 +126,13 @@ int main()
 
     signal(SIGHUP, handler);
     signal(SIGPIPE, handler);
+    std::vector<struct pollfd> fd(1);
+    fd[0].fd = socket_fd;
+    fd[0].events = POLLIN;
+    std::vector<std::string> stuff();
     while (true)
     {
-        safe_poll(fd, clients, timeout);
+        safe_poll(fd.data(), fd.size(), timeout);
         for (int i = 1; i < clients; i++)
         {
             if (fd[i].revents & (POLLERR | POLLHUP))
