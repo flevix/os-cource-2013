@@ -18,6 +18,7 @@ int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
 
+#define PORT "1488"
 pid_t pid;
 char *buf;
 
@@ -39,7 +40,8 @@ int main()
     if (pid)
     {
         signal(SIGINT, handler_sigint);
-        std::cout << "Server starter with pid = " << pid << std::endl;
+        std::cout << "Server starter with pid = " << pid
+                    << " Port = " << PORT << std::endl;
         int status;
         waitpid(pid, &status, 0);
         return 0;
@@ -54,7 +56,7 @@ int main()
     hints.ai_protocol = 0;
 
     addrinfo *result;
-    if (getaddrinfo(nullptr, "8442", &hints, &result) != 0)
+    if (getaddrinfo(nullptr, PORT,  &hints, &result) != 0)
     {
         std::exit(EXIT_FAILURE);
     }
