@@ -179,13 +179,18 @@ int main()
 
     Multi_Queue queue;
     std::vector<std::string> read_buffers(backlog + 1);
+    std::vector<int> read_size(backlog + 1);
+    std::vector<std::string> len_buffers(backlog + 1);
+    std::vector<int> len_size(backlog + 1);
+    const size_t lens = 4;
 
     pollfd fds[backlog + 1];
     fds[0].fd = socket_fd;
     fds[0].events = POLLIN;
     nfds_t nfds = 1;
     int timeout = -1;
-
+    
+    buf = safe_malloc(sizeof(size_t));
     signal(SIGHUP, handler);
     signal(SIGPIPE, handler);
     while (true)
@@ -197,16 +202,32 @@ int main()
                 close(fds[i].fd); //it's maybe not work
                 fds[i] = fds[nfds - 1];
                 {
-                    std::string temp = read_buffers[i - 1];
-                    read_buffers[i - 1] = read_buffers[nfds - 1];
+                    std::string temp = read_buffers[i];
+                    read_buffers[i] = read_buffers[nfds];
                     read_buffers[nfds - 1] = temp; //?
+
+                    int itemp = read_size[i];
+                    read_size[i] = read_size[nfds];
+                    read_buffers[nfds - 1] = itemp;
                 }
                 nfds -= 1;
                 continue;
             }
             else if (fds[i].revents & POLLIN)
             {
-
+                if (len_buffers[i].size != lens)
+                {
+                    size_t read_count = safe_read(fds[i].fd, 
+                }
+                else
+                {
+                }
+                if (read_size[i] == read_buffers[i].size())
+                {
+                    queue.push(queue.names[fds[i].fd] + read_buffers[i]);
+                    read_buffers[i].clear();
+                    read_size[i] = 0;
+                }
             }
             else if (fds[i].revents & POLLOUT && !queue.is_empty(fds[i].fd))
             {
@@ -237,6 +258,10 @@ int main()
             if (queue.heads.find(fd) == queue.heads.end())
             {
                 queue.add_head(fd, inet_ntoa(address.sin_addr));
+                read_buffers[nfds] = "";
+                read_size[nfds] = 0;
+                len_buffers[nfds] = "";
+                len_size[nfds] = 0;
             }
             nfds += 1;
         }
