@@ -4,19 +4,44 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <vector>
-#include <cstring>
-#include <stack>
+#include <map>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/poll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 void safe_write(int fd, const char *buf, size_t len);
 int safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
+
+class Multi_Queue
+{
+public:
+    std::vector<char> buffer;
+
+    Multi_Queue()
+    {
+        buffer.push_back('\0');
+        int size = 0;
+    }
+    
+    void add(std::string &str)
+    {
+        for (int i = 0; i < str.size(); i++)
+        {
+            buffer.push_back(str[i]);
+        }
+        size += str.size();
+    }
+
+    int size()
+    {
+        return buffer.size();
+    }
+};
 
 #define PORT "1488"
 pid_t pid;
@@ -120,7 +145,6 @@ int main()
             }
             if (fd[i].revents & POLLIN)
             {
-                
             }
             if (fd[i].revents & POLLOUT)
             {
@@ -130,6 +154,10 @@ int main()
         if (fd[0].revents && POLLIN)
         {
             int fd_acc = accept(socket_fd, result->ai_addr, &result->ai_addrlen);
+            //sockaddr_in ss = (addrinfo*) result;
+            //std::string qq(inet_ntoa(ss->sin_addr));
+            //std::cout << qq << std::endl;
+            //std::cout << ((sockaddr_in*) result)->sin_addr << std::endl;
             if (fd_acc == -1)
             {
                 perror("ACCEPT");
@@ -141,7 +169,6 @@ int main()
         }
     }
 }
-
 
 int safe_poll(pollfd fds[], int nfds, int timeout)
 {
