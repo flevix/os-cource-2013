@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <vector>
-#include <sstream>
 #include <map>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -14,8 +13,70 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-int safe_write(int fd, char *buf, size_t len);
-int safe_read(int fd, char *buf, size_t len);
+class Node
+{
+public:
+    std::string value;
+    int links;
+    Node *next;
+
+    Node(std::string value)
+        : value(value)
+        , links(0)
+        , next(nullptr)
+    {}
+};
+
+class Multi_Queue
+{
+public:
+    Node *head;
+    Node *tail;
+    std::map<int, Node*> heads;
+
+    Multi_Queue()
+    {
+        tail = new Node("");
+        head = tail;
+    }
+    void add_head(int fd)
+    {
+        heads[fd] = tail;
+        tail->links += 1;
+    }
+    
+    void push(std::string message)
+    {
+        if (tail == nullptr)
+        {
+            tail = new Node(message);
+            head = tail;
+        }
+        else
+        {
+            Node *next = new Node(message);
+            tail->next = next;
+            tail = next;
+        }
+    }
+
+    std::string get_value(int fd)
+    {
+        Node *curr = heads[fd];
+        heads[fd] = curr->next;
+        curr->links -= 1;
+        if (curr == head && curr->links == 0)
+        {
+            head = head->next;
+            delete curr;
+            return head->value;
+        }
+        return curr->next->value;
+    }
+};
+
+ssize_t safe_write(int fd, char *buf, size_t len);
+ssize_t safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
 
@@ -83,7 +144,7 @@ int main()
         std::exit(EXIT_FAILURE);
     }
     
-    const int backlog = 5;
+    const int backlog = 15;
     if (listen(socket_fd, backlog) == -1)
     {
         perror("LISTEN");
@@ -129,7 +190,7 @@ int safe_poll(pollfd fds[], int nfds, int timeout)
     return count;
 }
 
-int safe_write(int fd, char *buf, size_t len)
+ssize_t safe_write(int fd, char *buf, size_t len)
 {
     ssize_t curr_write = write(fd, buf, len);
     if (curr_write == -1)
@@ -140,7 +201,7 @@ int safe_write(int fd, char *buf, size_t len)
     return curr_write;
 }
 
-int safe_read(int fd, char *buf, size_t len)
+ssize_t safe_read(int fd, char *buf, size_t len)
 {
     ssize_t read_count = read(fd, buf, len);
     if (read_count < 0)
