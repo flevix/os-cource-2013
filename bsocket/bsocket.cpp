@@ -41,15 +41,18 @@ public:
     Node *tail;
     std::map<int, Node*> heads;
     std::map<int, int> pos;
+    std::map<int, std::string> names;
 
     Multi_Queue()
     {
         tail = new Node("");
         head = tail;
     }
-    void add_head(int fd)
+    void add_head(int fd, std::string name)
     {
         heads[fd] = tail;
+        pos[fd] = 0;
+        names[fd] = name;
         tail->links += 1;
     }
     
@@ -66,6 +69,11 @@ public:
             tail->next = next;
             tail = next;
         }
+    }
+
+    void set_pos(int fd, int curr_pos)
+    {
+        pos[fd] = curr_pos;
     }
 
     std::string get_value(int fd)
@@ -161,8 +169,7 @@ int main()
 
 
     Multi_Queue queue;
-    std::vector<std::string> read_buffers(backlog);
-    std::vector<std::string> names(backlog);
+    std::vector<std::string> read_buffers(backlog + 1);
 
     pollfd fds[backlog + 1];
     fds[0].fd = socket_fd;
@@ -176,9 +183,17 @@ int main()
     {
         safe_poll(fds, nfds, timeout);
         for (nfds_t i = 1; i < nfds; i++) {
-            if (fds[i].revents & (POLLERR | POLLHUP))
+            if (fds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
-
+                close(fds[i].fd); //it's maybe not work
+                fds[i] = fds[nfds - 1];
+                {
+                    std::string temp = read_buffers[i - 1];
+                    read_buffers[i - 1] = read_buffers[nfds - 1];
+                    read_buffers[nfds - 1] = temp; //?
+                }
+                nfds -= 1;
+                continue;
             }
             else if (fds[i].revents & POLLIN)
             {
@@ -197,8 +212,10 @@ int main()
                             (socklen_t*) &address_len);
             fds[nfds].fd = fd;
             fds[nfds].events = POLLIN | POLLOUT;
-            names.push_back(inet_ntoa(address.sin_addr));
-            queue.add_head(fd);
+            if (queue.heads.find(fd) == queue.heads.end())
+            {
+                queue.add_head(fd, inet_ntoa(address.sin_addr));
+            }
             nfds += 1;
         }
     }
