@@ -13,7 +13,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-ssize_t safe_write(int fd, char *buf, size_t len);
+ssize_t safe_write(int fd, const char *buf, size_t len);
 ssize_t safe_read(int fd, char *buf, size_t len);
 char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
@@ -40,7 +40,7 @@ public:
     Node *head;
     Node *tail;
     std::map<int, Node*> heads;
-    std::map<int, int> pos;
+    std::map<int, size_t> pos;
     std::map<int, std::string> names;
 
     Multi_Queue()
@@ -76,7 +76,12 @@ public:
         pos[fd] = curr_pos;
     }
 
-    std::string get_value(int fd)
+    bool is_empty(int fd)
+    {
+        return heads[fd] == nullptr;
+    }
+
+    void go_to_next(int fd)
     {
         Node *curr = heads[fd];
         heads[fd] = curr->next;
@@ -85,8 +90,12 @@ public:
         {
             head = head->next;
             delete curr;
-            return head->value;
         }
+    }
+
+    std::string get_value(int fd)
+    {
+        Node *curr = heads[fd];
         return curr->next->value;
     }
 };
@@ -199,9 +208,22 @@ int main()
             {
 
             }
-            else if (fds[i].revents & POLLOUT)
+            else if (fds[i].revents & POLLOUT && !queue.is_empty(fds[i].fd))
             {
-
+                std::string curr = queue.get_value(fds[i].fd);
+                size_t pos = queue.pos[fds[i].fd];
+                ssize_t count = safe_write(fds[i].fd, curr.data() + pos,
+                                            curr.size() - pos);
+                pos += count;
+                if (pos == curr.size())
+                {
+                    queue.go_to_next(fds[i].fd);
+                    queue.set_pos(fds[i].fd, 0);
+                }
+                else
+                {
+                    queue.set_pos(fds[i].fd, pos);
+                }
             }
         }
         if (fds[0].revents & POLLIN && nfds < backlog) {
@@ -244,7 +266,7 @@ int safe_poll(pollfd fds[], int nfds, int timeout)
     return count;
 }
 
-ssize_t safe_write(int fd, char *buf, size_t len)
+ssize_t safe_write(int fd, const char *buf, size_t len)
 {
     ssize_t curr_write = write(fd, buf, len);
     if (curr_write == -1)
