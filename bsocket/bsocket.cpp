@@ -19,6 +19,7 @@ char* safe_malloc(size_t size);
 int safe_poll(pollfd fds[], int nfds, int timeout);
 int safe_accept(int socket, sockaddr *address,
                 socklen_t *address_len);
+ssize_t string_to_size(std::string st);
 
 class Node
 {
@@ -78,7 +79,7 @@ public:
 
     bool is_empty(int fd)
     {
-        return heads[fd] == nullptr;
+        return heads[fd]->next == nullptr;
     }
 
     void go_to_next(int fd)
@@ -179,9 +180,8 @@ int main()
 
     Multi_Queue queue;
     std::vector<std::string> read_buffers(backlog + 1);
-    std::vector<int> read_size(backlog + 1);
+    std::vector<size_t> read_size(backlog + 1);
     std::vector<std::string> len_buffers(backlog + 1);
-    std::vector<int> len_size(backlog + 1);
     const size_t lens = 4;
 
     pollfd fds[backlog + 1];
@@ -189,8 +189,9 @@ int main()
     fds[0].events = POLLIN;
     nfds_t nfds = 1;
     int timeout = -1;
-    
-    buf = safe_malloc(sizeof(size_t));
+
+    const size_t buf_size = 1024;
+    buf = safe_malloc(buf_size);
     signal(SIGHUP, handler);
     signal(SIGPIPE, handler);
     while (true)
@@ -199,37 +200,55 @@ int main()
         for (nfds_t i = 1; i < nfds; i++) {
             if (fds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
-                close(fds[i].fd); //it's maybe not work
                 fds[i] = fds[nfds - 1];
                 {
-                    std::string temp = read_buffers[i];
-                    read_buffers[i] = read_buffers[nfds];
-                    read_buffers[nfds - 1] = temp; //?
-
-                    int itemp = read_size[i];
-                    read_size[i] = read_size[nfds];
-                    read_buffers[nfds - 1] = itemp;
+                    read_buffers[i] = read_buffers[nfds - 1];
+                    read_size[i] = read_size[nfds - 1];
+                    len_buffers[i] = len_buffers[nfds - 1];
                 }
                 nfds -= 1;
                 continue;
             }
-            else if (fds[i].revents & POLLIN)
+            if (fds[i].revents & POLLIN)
             {
-                if (len_buffers[i].size != lens)
+                if (len_buffers[i].size() != lens)
                 {
-                    size_t read_count = safe_read(fds[i].fd, 
+                    size_t read_count = safe_read(fds[i].fd, buf,
+                            std::min(lens - len_buffers[i].size(),
+                                    buf_size));
+                    for (size_t j = 0; j < read_count; j++) 
+                    {
+                        len_buffers[i] += buf[j];
+                    }
+                    if (lens == len_buffers[i].size()) 
+                    {
+                        ssize_t value = string_to_size(len_buffers[i]);
+                        if (value == -1) {
+                            close(fds[i].fd);
+                            fds[i].fd = -1;
+                            continue;
+                        } 
+                        read_size[i] = value;
+                    }
                 }
-                else
+                if (read_size[i] > 0) 
                 {
+                    size_t read_count = safe_read(fds[i].fd, buf,
+                                std::min(read_size[i] - read_buffers[i].size(),
+                                        buf_size));
+                    for (size_t j = 0; j < read_count; j++) {
+                        read_buffers[i] += buf[j];
+                    }
                 }
-                if (read_size[i] == read_buffers[i].size())
+                if (read_size[i] == read_buffers[i].size() && read_size[i] > 0)
                 {
                     queue.push(queue.names[fds[i].fd] + read_buffers[i]);
                     read_buffers[i].clear();
+                    len_buffers[i].clear();
                     read_size[i] = 0;
                 }
             }
-            else if (fds[i].revents & POLLOUT && !queue.is_empty(fds[i].fd))
+            if (fds[i].revents & POLLOUT && !queue.is_empty(fds[i].fd))
             {
                 std::string curr = queue.get_value(fds[i].fd);
                 size_t pos = queue.pos[fds[i].fd];
@@ -261,11 +280,25 @@ int main()
                 read_buffers[nfds] = "";
                 read_size[nfds] = 0;
                 len_buffers[nfds] = "";
-                len_size[nfds] = 0;
             }
             nfds += 1;
         }
     }
+}
+
+ssize_t string_to_size(std::string st) 
+{
+    ssize_t res = 0;
+    for (size_t i = 0; i < st.size(); i++)
+    {
+        if (st[i] < '0' || st[i] > '9')
+        {
+            return -1;
+        }
+        res *= 10;
+        res += st[i] - '0';
+    }
+    return res;
 }
 
 int safe_accept(int socket, sockaddr *address,
