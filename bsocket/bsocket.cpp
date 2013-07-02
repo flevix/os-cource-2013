@@ -79,7 +79,7 @@ public:
 
     bool is_empty(int fd)
     {
-        return heads[fd]->next == nullptr;
+        return heads[fd] == nullptr || heads[fd]->next == nullptr;
     }
 
     void go_to_next(int fd)
@@ -264,6 +264,14 @@ int main()
                 {
                     queue.set_pos(fds[i].fd, pos);
                 }
+            }
+            if (queue.is_empty(fds[i].fd))
+            {
+                fds[i].events &= ~POLLOUT;
+            }
+            else
+            {
+                fds[i].events |= POLLOUT;
             }
         }
         if (fds[0].revents & POLLIN && nfds < backlog) {
